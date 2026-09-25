@@ -1,0 +1,20 @@
+/* =====================================================================
+   plate-loader.css — Apex Fitness: Plate Loader tab only
+   Applied by plate-loader.js at render time (plate-hover, plate-btn-touch
+   are not present as static classes in index.html).
+   NOTE: the actual plate colors/dimensions live in plate-loader.js's
+   plateDefinitions array as inline SVG attributes, not here — if the
+   plate graphics look wrong, check that file first, not this one.
+   ===================================================================== */
+
+.plate-hover {
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.plate-hover:hover {
+  transform: translateY(-2px) scale(1.04);
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+}
+
+.plate-btn-touch {
+  touch-action: manipulation;
+}

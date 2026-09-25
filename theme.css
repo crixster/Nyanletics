@@ -1,0 +1,32 @@
+/* =====================================================================
+   theme.css — Apex Fitness: shared design tokens & base styles
+   Used by ALL THREE tabs (Lifting Log, Plate Loader, Macro Tracker).
+   .glass-card alone is used 21 times across every panel in the app —
+   do not fork or override it per-module. If you want per-tab accents,
+   add a new scoped class in that tab's own CSS file instead of editing
+   the rules below.
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Custom scrollbar for dropdown suggestions — used by Lifting Log's
+   exercise autocomplete AND Macro Tracker's favourites search. */
+.suggestions-list::-webkit-scrollbar {
+  width: 6px;
+}
+.suggestions-list::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
