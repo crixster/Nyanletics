@@ -1,12 +1,8 @@
 // =====================================================================
 // core.js — Apex Fitness: shared app shell
 // Owns: tab switching, toast notifications, tempo formatting, PWA install.
-// Do NOT put Lifting Log / Plate Loader / Macro Tracker / Rehab feature logic here.
-// This file is loaded FIRST (see index.html) and must not read the
-// feature-specific state directly — call the other modules' exported functions instead.
 // =====================================================================
 
-// --- PWA Install Support ---------------------------------------------
 let deferredInstallPrompt = null;
 
 function isRunningStandalone() {
@@ -35,7 +31,7 @@ function initPwaInstallUI() {
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     container.classList.add('hidden');
-    showToast('Nyanletics Hybrid Trainning installed!');
+    showToast('Nyanletics Hybrid Training installed!');
   });
 
   const ua = window.navigator.userAgent || '';
@@ -81,53 +77,53 @@ function showToast(msg) {
 }
 
 function switchTab(tab) {
+  const tabName = (tab === 'plate') ? 'plates' : tab;
+
   const logTab = document.getElementById('logTab');
   const platesTab = document.getElementById('platesTab');
   const macrosTab = document.getElementById('macrosTab');
   const rehabTab = document.getElementById('rehabTab');
 
-  const tabBtnLog = document.getElementById('tabBtnLog');
-  const tabBtnPlates = document.getElementById('tabBtnPlates');
-  const tabBtnMacros = document.getElementById('tabBtnMacros');
-  const tabBtnRehab = document.getElementById('tabBtnRehab');
+  const tabBtnLog = document.getElementById('tabBtnLog') || document.getElementById('nav-log');
+  const tabBtnPlates = document.getElementById('tabBtnPlates') || document.getElementById('nav-plate') || document.getElementById('nav-plates');
+  const tabBtnMacros = document.getElementById('tabBtnMacros') || document.getElementById('nav-macro') || document.getElementById('nav-macros');
+  const tabBtnRehab = document.getElementById('tabBtnRehab') || document.getElementById('nav-rehab');
 
-  // Hide all tab views
   logTab?.classList.add('hidden');
   platesTab?.classList.add('hidden');
   macrosTab?.classList.add('hidden');
   rehabTab?.classList.add('hidden');
 
-  // Reset all button styles
-  const inactiveClass = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-300 hover:text-white";
-  const activeClass = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/20";
+  const inactiveClass = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-300 hover:text-white flex-shrink-0 flex items-center justify-center gap-2 px-4";
+  const activeClass = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 flex-shrink-0 flex items-center justify-center gap-2 px-4";
 
   if (tabBtnLog) tabBtnLog.className = inactiveClass;
   if (tabBtnPlates) tabBtnPlates.className = inactiveClass;
   if (tabBtnMacros) tabBtnMacros.className = inactiveClass;
   if (tabBtnRehab) tabBtnRehab.className = inactiveClass;
 
-  // Activate selected tab
-  if (tab === 'log') {
+  if (tabName === 'log') {
     logTab?.classList.remove('hidden');
     if (tabBtnLog) tabBtnLog.className = activeClass;
     if (typeof renderExercises === 'function') renderExercises();
     if (typeof render1RMCard === 'function') render1RMCard();
     if (typeof updateSuggestionsSelect === 'function') updateSuggestionsSelect();
-  } else if (tab === 'plates') {
+  } else if (tabName === 'plates') {
     platesTab?.classList.remove('hidden');
     if (tabBtnPlates) tabBtnPlates.className = activeClass;
     if (typeof updateUI === 'function') updateUI();
-  } else if (tab === 'macros') {
+  } else if (tabName === 'macros') {
     macrosTab?.classList.remove('hidden');
     if (tabBtnMacros) tabBtnMacros.className = activeClass;
     if (typeof renderDay === 'function') renderDay();
-  } else if (tab === 'rehab') {
+  } else if (tabName === 'rehab') {
     rehabTab?.classList.remove('hidden');
     if (tabBtnRehab) tabBtnRehab.className = activeClass;
     if (typeof renderCharacterView === 'function') renderCharacterView();
     if (typeof renderLegend === 'function') renderLegend();
     if (typeof renderPicker === 'function') renderPicker();
     if (typeof renderWorkout === 'function') renderWorkout();
+    if (typeof renderSchedule === 'function') renderSchedule();
   }
 }
 
@@ -165,6 +161,7 @@ window.onload = function() {
   if (typeof calculateFromTarget === 'function') calculateFromTarget();
   if (typeof loadSettings === 'function') loadSettings();
   if (typeof renderDay === 'function') renderDay();
+  if (typeof initRehabUI === 'function') initRehabUI();
   
   initPwaInstallUI();
 
