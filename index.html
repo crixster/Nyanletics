@@ -22,6 +22,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="plate-loader.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+
+
+  
 </head>
 <body class="min-h-screen pb-12">
   <div class="max-w-xl mx-auto px-4 pt-6">
@@ -45,18 +51,32 @@
 
     
 
-    <!-- Navigation Tabs -->
-    <div class="flex bg-slate-800/80 p-1 rounded-xl mb-6 border border-slate-700/50">
-      <button id="tabBtnLog" onclick="switchTab('log')" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/20">
-        <i class="fa-solid fa-clipboard-list mr-1.5"></i>Lifting Log
-      </button>
-      <button id="tabBtnPlates" onclick="switchTab('plates')" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-300 hover:text-white">
-        <i class="fa-solid fa-weight-hanging mr-1.5"></i>Plate Loader
-      </button>
-      <button id="tabBtnMacros" onclick="switchTab('macros')" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-300 hover:text-white">
-        <i class="fa-solid fa-utensils mr-1.5"></i>Macro Tracker
-      </button>
-    </div>
+<!-- Add 'overflow-x-auto', 'whitespace-nowrap', and hide the scrollbar for a clean look -->
+<div class="flex overflow-x-auto whitespace-nowrap bg-gray-800 rounded-lg p-2 gap-2 hide-scrollbar">
+  
+  <!-- Existing Tabs (Ensure they have 'flex-shrink-0' so they don't squish) -->
+  <button id="nav-log" onclick="switchTab('log')" class="flex-shrink-0 ...">
+    <!-- Existing Lifting Log Icon & Text -->
+  </button>
+  
+  <button id="nav-plate" onclick="switchTab('plate')" class="flex-shrink-0 ...">
+    <!-- Existing Plate Loader Icon & Text -->
+  </button>
+  
+  <button id="nav-macro" onclick="switchTab('macros')" class="flex-shrink-0 ...">
+    <!-- Existing Macro Tracker Icon & Text -->
+  </button>
+
+  <!-- NEW: Rehab & Recovery Tab -->
+  <button id="nav-rehab" onclick="switchTab('rehab')" class="flex items-center justify-center flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-400 hover:text-white rounded-md transition-colors duration-200">
+    <!-- Medical Cross / Recovery Icon -->
+    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path>
+    </svg>
+    Rehab & Recovery
+  </button>
+
+</div>
 
     <!-- MAIN CONTENT PANE -->
     <main>
@@ -737,6 +757,783 @@
       </div>
     </div>
   </div>
+
+<!-- NEW: Rehab & Recovery Tab -->
+<div id="rehabTab" class="hidden space-y-5">
+  <div class="rehab-app-wrapper">
+  <style>
+    .rehab-app-wrapper {
+      --bg-dark: #0a0f1d;
+      --panel-bg: rgba(17, 24, 39, 0.88);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --primary-cyan: #00f2fe;
+      --primary-blue: #4facfe;
+      --accent-coral: #ff5e62;
+      --accent-coral-glow: rgba(255, 94, 98, 0.5);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-subtle: #6b7280;
+      --input-bg: rgba(15, 23, 42, 0.6);
+      --input-border: rgba(255, 255, 255, 0.12);
+      box-sizing: border-box;
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(0, 242, 254, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(255, 94, 98, 0.06) 0%, transparent 40%);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .rehab-app-wrapper * { box-sizing: border-box; }
+    .rehab-app-wrapper h1, .rehab-app-wrapper h2, .rehab-app-wrapper h3, .rehab-app-wrapper .brand { font-family: 'Space Grotesk', sans-serif; }
+
+    .rehab-app-wrapper header {
+      padding: 20px 24px;
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--panel-border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .rehab-app-wrapper .brand { font-size: 22px; font-weight: 700; color: #fff; margin: 0; }
+    .rehab-app-wrapper .brand span { color: var(--primary-cyan); }
+    .rehab-app-wrapper .tagline { font-size: 13px; color: var(--text-muted); margin: 4px 0 0; }
+
+    .rehab-app-wrapper main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+      display: grid;
+      gap: 24px;
+      grid-template-columns: 1fr;
+    }
+
+    @media(min-width: 920px) { 
+      .rehab-app-wrapper main { grid-template-columns: 380px 1fr; } 
+    }
+
+    .rehab-app-wrapper .panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      transition: all 0.3s ease;
+    }
+
+    .rehab-app-wrapper .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .rehab-app-wrapper .panel h2 { font-size: 16px; margin: 0; color: #fff; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .rehab-app-wrapper .collapse-icon { font-size: 14px; color: var(--primary-cyan); transition: transform 0.2s; }
+    .rehab-app-wrapper .panel.collapsed .panel-content { display: none; }
+    .rehab-app-wrapper .panel.collapsed .collapse-icon { transform: rotate(-90deg); }
+    .rehab-app-wrapper .panel-content { margin-top: 14px; }
+
+    /* View Toggle Buttons */
+    .rehab-app-wrapper .viewToggle {
+      display: flex; gap: 8px; margin-bottom: 16px; background: rgba(0, 0, 0, 0.25);
+      padding: 4px; border-radius: 12px; border: 1px solid var(--panel-border);
+    }
+    .rehab-app-wrapper .viewToggle button {
+      flex: 1; padding: 8px 0; border-radius: 8px; border: none; background: transparent;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .rehab-app-wrapper .viewToggle button.active {
+      background: linear-gradient(135deg, var(--primary-cyan), var(--primary-blue));
+      color: #0a0f1d; font-weight: 700; box-shadow: 0 4px 12px rgba(0, 242, 254, 0.3);
+    }
+
+    /* Character Container with Hotspots */
+    .rehab-app-wrapper .pixel-char-container {
+      background: rgba(5, 8, 18, 0.9);
+      border-radius: 14px;
+      border: 1px solid var(--panel-border);
+      padding: 8px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .rehab-app-wrapper .pixel-art-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 340px;
+      margin: 0 auto;
+    }
+
+    .rehab-app-wrapper .pixel-bg-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      box-shadow: 0 0 25px rgba(0, 242, 254, 0.2);
+    }
+
+    .rehab-app-wrapper .pixel-overlay-svg {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+    }
+
+    .rehab-app-wrapper .pixel-overlay-svg .muscle {
+      cursor: pointer; pointer-events: auto;
+      fill: rgba(0, 242, 254, 0.12); stroke: var(--primary-cyan); stroke-width: 1.5; stroke-dasharray: 4 2;
+      transition: all 0.2s ease;
+    }
+
+    .rehab-app-wrapper .pixel-overlay-svg .muscle:hover {
+      fill: rgba(0, 242, 254, 0.45); filter: drop-shadow(0 0 8px var(--primary-cyan));
+    }
+
+    .rehab-app-wrapper .pixel-overlay-svg .muscle.selected {
+      fill: var(--accent-coral); stroke: #ffffff; stroke-width: 2.5; stroke-dasharray: none;
+      filter: drop-shadow(0 0 12px var(--accent-coral-glow));
+      animation: pulseGlow 1.5s infinite alternate;
+    }
+
+    @keyframes pulseGlow {
+      0% { opacity: 0.75; }
+      100% { opacity: 1; filter: drop-shadow(0 0 16px var(--accent-coral)); }
+    }
+
+    .rehab-app-wrapper .pixel-hint {
+      font-family: 'Press Start 2P', monospace; font-size: 8.5px; color: var(--primary-cyan);
+      margin-top: 12px; letter-spacing: 0.5px; text-transform: uppercase;
+    }
+
+    .rehab-app-wrapper .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .rehab-app-wrapper .legend button {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; padding: 6px 12px;
+      border-radius: 20px; border: 1px solid var(--panel-border); background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted); cursor: pointer; transition: all 0.2s ease;
+    }
+    .rehab-app-wrapper .legend button:hover { border-color: var(--primary-cyan); color: var(--text-main); }
+    .rehab-app-wrapper .legend button.active {
+      background: rgba(0, 242, 254, 0.12); border-color: var(--primary-cyan); color: var(--primary-cyan); font-weight: 600;
+    }
+
+    /* Exercise Picker & Search */
+    .rehab-app-wrapper .searchBar { width: 100%; margin-bottom: 12px; }
+    .rehab-app-wrapper .searchBar input {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--input-border);
+      border-radius: 10px; padding: 10px 12px; font-size: 13.5px; color: #fff; font-family: inherit;
+    }
+    .rehab-app-wrapper .searchBar input:focus { outline: none; border-color: var(--primary-cyan); }
+
+    .rehab-app-wrapper .mgTitle { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .rehab-app-wrapper .mgTitle h3 { margin: 0; font-size: 15px; color: #fff; }
+    .rehab-app-wrapper .hint { color: var(--text-muted); font-size: 12px; }
+
+    .rehab-app-wrapper .exRow {
+      display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+      border-radius: 12px; border: 1px solid var(--panel-border); margin-bottom: 10px; background: var(--input-bg);
+    }
+    .rehab-app-wrapper .exRow input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary-cyan); cursor: pointer; margin-top: 3px; }
+    .rehab-app-wrapper .exInfo { flex: 1; min-width: 0; }
+    .rehab-app-wrapper .exName { font-size: 14px; font-weight: 600; color: #fff; }
+    .rehab-app-wrapper .exDesc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .rehab-app-wrapper .exLinks { display: flex; gap: 10px; margin-top: 6px; font-size: 11px; }
+    .rehab-app-wrapper .exLinks a { color: var(--primary-cyan); text-decoration: none; }
+    .rehab-app-wrapper .exLinks a:hover { text-decoration: underline; }
+
+    .rehab-app-wrapper .exMeta { font-size: 12px; color: var(--text-muted); margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .rehab-app-wrapper .exMeta input {
+      width: 42px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--input-border);
+      border-radius: 6px; font-size: 12px; padding: 3px; color: #fff; text-align: center;
+    }
+    .rehab-app-wrapper .rmBtn { background: none; border: none; color: var(--text-subtle); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 6px; }
+    .rehab-app-wrapper .rmBtn:hover { color: var(--accent-coral); background: rgba(255, 94, 98, 0.1); }
+
+    /* Custom Exercise Form Modal/Panel */
+    .rehab-app-wrapper .addExBox { background: rgba(0,0,0,0.2); border: 1px dashed var(--input-border); border-radius: 12px; padding: 14px; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .rehab-app-wrapper .addExBox input, .rehab-app-wrapper .addExBox textarea, .rehab-app-wrapper .addExBox select {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--input-border);
+      border-radius: 8px; padding: 8px 10px; font-size: 13px; color: #fff; font-family: inherit;
+    }
+    .rehab-app-wrapper .addExBox textarea { resize: vertical; min-height: 50px; }
+    .rehab-app-wrapper .fileUploadLabel { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .rehab-app-wrapper .fileUploadLabel input { display: none; }
+
+    .rehab-app-wrapper .primaryBtn {
+      width: 100%; margin-top: 12px; border: none;
+      background: linear-gradient(135deg, var(--accent-coral), #f857a6); color: #fff;
+      padding: 12px 0; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 94, 98, 0.25); transition: all 0.2s ease;
+    }
+    .rehab-app-wrapper .primaryBtn:disabled { background: rgba(255, 255, 255, 0.08); color: var(--text-subtle); box-shadow: none; cursor: not-allowed; }
+
+    /* Custom Workout List */
+    .rehab-app-wrapper .workoutHead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .rehab-app-wrapper .totalTime { font-size: 13px; color: var(--primary-cyan); font-weight: 700; }
+    .rehab-app-wrapper .wRow { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--panel-border); }
+    .rehab-app-wrapper .wTag {
+      font-size: 10px; text-transform: uppercase; color: var(--primary-cyan);
+      background: rgba(0, 242, 254, 0.1); padding: 4px 8px; border-radius: 6px; font-weight: 700; width: 80px; text-align: center;
+    }
+    .rehab-app-wrapper .wName { flex: 1; font-size: 13.5px; font-weight: 600; color: #fff; }
+    .rehab-app-wrapper .wMeta { font-size: 12px; color: var(--text-muted); text-align: right; }
+    .rehab-app-wrapper .mini-input {
+      width: 36px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--input-border);
+      border-radius: 4px; font-size: 11px; padding: 2px; color: #fff; text-align: center;
+    }
+    .rehab-app-wrapper .empty { color: var(--text-muted); font-size: 13.5px; padding: 16px 4px; text-align: center; }
+
+    .rehab-app-wrapper .saveRow { display: flex; gap: 8px; margin-top: 14px; }
+    .rehab-app-wrapper .saveRow input { flex: 1; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; color: #fff; }
+    .rehab-app-wrapper .saveRow button { border: none; background: rgba(255,255,255,0.1); border: 1px solid var(--panel-border); color: #fff; border-radius: 10px; padding: 0 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+
+    /* Saved Routines Accordion */
+    .rehab-app-wrapper .savedRoutineCard { background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
+    .rehab-app-wrapper .savedRoutineHead { padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13.5px; font-weight: 600; color: #fff; }
+    .rehab-app-wrapper .savedRoutineContent { padding: 0 14px 12px 14px; border-top: 1px solid var(--panel-border); display: none; }
+    .rehab-app-wrapper .savedRoutineCard.open .savedRoutineContent { display: block; }
+    .rehab-app-wrapper .savedExItem { font-size: 12px; color: var(--text-muted); padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); display: flex; justify-content: space-between; }
+
+    /* Weekly Schedule Multi-Select */
+    .rehab-app-wrapper .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+    .rehab-app-wrapper .dayCol { background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .rehab-app-wrapper .dayName { font-size: 12px; font-weight: 700; color: var(--primary-cyan); text-transform: uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px; }
+    .rehab-app-wrapper .dayRoutines { display: flex; flex-direction: column; gap: 6px; max-height: 100px; overflow-y: auto; margin-bottom:4px; }
+    .rehab-app-wrapper .dayRoutines label { font-size: 11px; color: #fff; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .rehab-app-wrapper .dayRoutines input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--primary-cyan); cursor: pointer; }
+    .rehab-app-wrapper .dayInfo { font-size: 11px; color: var(--accent-coral); font-weight: 600; }
+
+    @media(max-width: 768px) { .rehab-app-wrapper .week { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+
+  <header>
+    <p class="brand">apex<span>.</span>rehab</p>
+    <p class="tagline">Interactive Pixel Character Recovery & Muscle Builder</p>
+  </header>
+
+  <main>
+    <!-- Body Map Panel -->
+    <section class="panel" id="panelMap">
+      <div class="panel-header" onclick="togglePanel('panelMap')">
+        <h2><span>🗺️</span> Anatomical Model</h2>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="panel-content">
+        <div class="viewToggle">
+          <button id="btnFront" class="active">Anterior View</button>
+          <button id="btnBack">Posterior View</button>
+        </div>
+        <div class="pixel-char-container">
+          <div class="pixel-art-wrapper">
+            <img id="charImageView" class="pixel-bg-img" src="" alt="Anterior Pixel Muscle View">
+            <div id="svgOverlayWrap"></div>
+          </div>
+          <div class="pixel-hint" id="activeZoneHint">▶ CLICK MUSCLE OR LEGEND ◀</div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </section>
+
+    <div style="display:flex; flex-direction:column; gap:24px;">
+      <!-- Exercise Picker Panel -->
+      <section class="panel" id="panelPicker">
+        <div class="panel-header" onclick="togglePanel('panelPicker')">
+          <h2><span>🎯</span> Targeted Exercises</h2>
+          <span class="collapse-icon">▼</span>
+        </div>
+        <div class="panel-content">
+          <div class="searchBar">
+            <input type="text" id="globalSearch" placeholder="Search exercises across all muscle groups..." oninput="handleGlobalSearch(this.value)">
+          </div>
+          <div class="mgTitle">
+            <h3 id="mgName">Select a muscle group</h3>
+            <span class="hint" id="mgHint"></span>
+          </div>
+          <div id="exList"></div>
+
+          <!-- Add Custom Exercise Form -->
+          <div class="addExBox">
+            <span style="font-size:12.5px; font-weight:700; color:var(--primary-cyan);">+ Add Custom Exercise</span>
+            <input id="customName" placeholder="Exercise name (e.g. Banded Knee Flexion)">
+            <textarea id="customDesc" placeholder="Brief description of movement..."></textarea>
+            <div style="display:flex; gap:8px;">
+              <select id="customMg" style="flex:1;"></select>
+              <input id="customTime" type="number" placeholder="Est. Mins (Opt)" style="flex:1;">
+            </div>
+            <input id="customYoutube" placeholder="YouTube reference link (optional)">
+            <label class="fileUploadLabel">
+              📁 Upload Instruction Image: <input type="file" id="customImgFile" accept="image/*">
+            </label>
+            <button id="addCustomExBtn" style="border:none; background:var(--primary-cyan); color:#0a0f1d; border-radius:8px; padding:10px; font-weight:700; cursor:pointer; font-size:12.5px;">Save Custom Exercise</button>
+          </div>
+
+          <button class="primaryBtn" id="addToWorkoutBtn" disabled>Add Selected to Routine →</button>
+        </div>
+      </section>
+
+      <!-- Custom Routine Builder Panel -->
+      <section class="panel" id="panelWorkout">
+        <div class="panel-header" onclick="togglePanel('panelWorkout')">
+          <h2><span>⚡</span> Custom Recovery Routine</h2>
+          <span class="collapse-icon">▼</span>
+        </div>
+        <div class="panel-content">
+          <div class="searchBar">
+            <input type="text" id="workoutSearch" placeholder="Filter active routine..." oninput="handleWorkoutSearch(this.value)">
+          </div>
+          <div class="workoutHead">
+            <h2 style="margin:0; font-size:14px;">Routine Items</h2>
+            <span class="totalTime" id="totalTime">0 min total</span>
+          </div>
+          <div id="workoutList">
+            <p class="empty">No exercises added yet. Select a muscle group or search above.</p>
+          </div>
+          <div class="saveRow">
+            <input id="workoutNameInput" placeholder="Routine name (e.g., Knee Recovery A)">
+            <button id="saveWorkoutBtn">Save Routine</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Weekly Schedule & Saved Routines Panel -->
+      <section class="panel" id="panelSchedule">
+        <div class="panel-header" onclick="togglePanel('panelSchedule')">
+          <h2><span>📅</span> Weekly Schedule & Saved Routines</h2>
+          <span class="collapse-icon">▼</span>
+        </div>
+        <div class="panel-content">
+          <div class="week" id="week" style="margin-bottom:16px;"></div>
+          <div class="savedList" id="savedList"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const MUSCLES = [
+      {id:"chest", label:"Chest", views:["front"]},
+      {id:"deltoid", label:"Shoulders", views:["front","back"]},
+      {id:"biceps", label:"Biceps", views:["front"]},
+      {id:"triceps", label:"Triceps", views:["back"]},
+      {id:"abs", label:"Abs / Core", views:["front"]},
+      {id:"obliques", label:"Obliques", views:["front"]},
+      {id:"lats", label:"Back / Lats", views:["back"]},
+      {id:"lowerback", label:"Lower Back", views:["back"]},
+      {id:"glutes", label:"Glutes", views:["back"]},
+      {id:"quads", label:"Quadriceps", views:["front"]},
+      {id:"hamstrings", label:"Hamstrings", views:["back"]},
+      {id:"calves", label:"Calves", views:["front","back"]},
+      {id:"forearms", label:"Forearms", views:["front"]},
+      {id:"neck", label:"Neck", views:["front","back"]}
+    ];
+
+    const DEFAULT_EX = {
+      chest:[["Doorway pec stretch","Gently press chest forward in doorway",1,30,"time","",""],["Wall push-up","Controlled push-ups against a stable wall",2,10,"reps","",""]],
+      deltoid:[["Pendulum swing","Arm circles with relaxed shoulder",2,20,"time","",""],["Band external rotation","External rotation with resistance band",2,12,"reps","",""]],
+      biceps:[["Standing bicep stretch","Arm extended with palm facing outward",2,20,"time","",""],["Light band curl","Controlled bicep curl",2,12,"reps","",""]],
+      triceps:[["Overhead tricep stretch","Elbow bent behind head stretch",2,20,"time","",""],["Band tricep pushdown","Pushing band downwards",2,12,"reps","",""]],
+      abs:[["Dead bug","Opposite arm and leg extension",2,10,"reps","",""],["Front plank","Core stability hold",3,20,"time","",""]],
+      obliques:[["Side plank","Lateral core stability hold",2,15,"time","",""]],
+      lats:[["Child's pose","Extended arms forward stretch",1,30,"time","",""],["Band lat pulldown","Pulling band down to chest",2,12,"reps","",""]],
+      lowerback:[["Knee-to-chest stretch","Pulling knees toward chest while lying down",2,20,"time","",""]],
+      glutes:[["Glute bridge","Lifting hips upward squeezing glutes",3,12,"reps","",""]],
+      quads:[["Wall sit","Isometric wall squat hold",2,20,"time","",""],["Bodyweight squat","Controlled squat movement",2,10,"reps","",""]],
+      hamstrings:[["Standing hamstring stretch","Hinged forward bend stretch",2,20,"time","",""]],
+      calves:[["Wall calf stretch","Lean against wall with straight back leg",2,20,"time","",""],["Standing calf raise","Raising heels up",3,15,"reps","",""]],
+      forearms:[["Wrist flexor stretch","Pulling fingers back gently",2,15,"time","",""]],
+      neck:[["Neck side stretch","Ear to shoulder gentle tilt",2,15,"time","",""]]
+    };
+
+    const state = {
+      view: "front",
+      selectedMg: null,
+      searchQuery: "",
+      exercises: JSON.parse(localStorage.getItem("rb_exercises") || "null") || JSON.parse(JSON.stringify(DEFAULT_EX)),
+      checked: {},
+      workout: JSON.parse(localStorage.getItem("rb_workout") || "[]"),
+      saved: JSON.parse(localStorage.getItem("rb_saved") || "{}"),
+      schedule: JSON.parse(localStorage.getItem("rb_schedule") || "{}")
+    };
+
+    function persist() {
+      try {
+        localStorage.setItem("rb_exercises", JSON.stringify(state.exercises));
+        localStorage.setItem("rb_workout", JSON.stringify(state.workout));
+        localStorage.setItem("rb_saved", JSON.stringify(state.saved));
+        localStorage.setItem("rb_schedule", JSON.stringify(state.schedule));
+      } catch(e) {}
+    }
+
+    function togglePanel(panelId) {
+      document.getElementById(panelId).classList.toggle('collapsed');
+    }
+
+    function getOverlaySVG(view) {
+      if (view === "front") {
+        return `
+        <svg class="pixel-overlay-svg" viewBox="0 0 300 420" xmlns="http://www.w3.org/2000/svg">
+          <path class="muscle" data-mg="neck" d="M132,60 L168,60 L172,82 L128,82 Z" />
+          <path class="muscle" data-mg="deltoid" d="M98,82 L130,87 L124,128 L84,112 Z" />
+          <path class="muscle" data-mg="deltoid" d="M202,82 L170,87 L176,128 L216,112 Z" />
+          <path class="muscle" data-mg="chest" d="M128,87 L150,90 L150,145 L118,138 L122,105 Z" />
+          <path class="muscle" data-mg="chest" d="M172,87 L150,90 L150,145 L182,138 L178,105 Z" />
+          <path class="muscle" data-mg="biceps" d="M78,114 L100,120 L92,168 L72,160 Z" />
+          <path class="muscle" data-mg="biceps" d="M222,114 L200,120 L208,168 L228,160 Z" />
+          <path class="muscle" data-mg="forearms" d="M68,172 L90,180 L84,232 L62,218 Z" />
+          <path class="muscle" data-mg="forearms" d="M232,172 L210,180 L216,232 L238,218 Z" />
+          <path class="muscle" data-mg="abs" d="M128,148 L172,148 L168,235 L132,235 Z" />
+          <path class="muscle" data-mg="obliques" d="M112,148 L124,148 L128,235 L106,218 Z" />
+          <path class="muscle" data-mg="obliques" d="M188,148 L176,148 L172,235 L194,218 Z" />
+          <path class="muscle" data-mg="quads" d="M104,245 L144,245 L138,365 L108,358 Z" />
+          <path class="muscle" data-mg="quads" d="M196,245 L156,245 L162,365 L192,358 Z" />
+          <path class="muscle" data-mg="calves" d="M106,370 L136,370 L130,490 L110,480 Z" transform="translate(0, -110)" />
+          <path class="muscle" data-mg="calves" d="M194,370 L164,370 L170,490 L190,480 Z" transform="translate(0, -110)" />
+        </svg>`;
+      } else {
+        return `
+        <svg class="pixel-overlay-svg" viewBox="0 0 300 420" xmlns="http://www.w3.org/2000/svg">
+          <path class="muscle" data-mg="neck" d="M132,60 L168,60 L172,82 L128,82 Z" />
+          <path class="muscle" data-mg="deltoid" d="M98,82 L130,87 L124,128 L84,112 Z" />
+          <path class="muscle" data-mg="deltoid" d="M202,82 L170,87 L176,128 L216,112 Z" />
+          <path class="muscle" data-mg="lats" d="M124,87 L176,87 L182,175 L118,175 Z" />
+          <path class="muscle" data-mg="triceps" d="M78,114 L100,120 L92,168 L72,160 Z" />
+          <path class="muscle" data-mg="triceps" d="M222,114 L200,120 L208,168 L228,160 Z" />
+          <path class="muscle" data-mg="lowerback" d="M120,178 L180,178 L174,235 L126,235 Z" />
+          <path class="muscle" data-mg="glutes" d="M106,240 L194,240 L188,305 L112,305 Z" />
+          <path class="muscle" data-mg="hamstrings" d="M108,310 L142,310 L136,375 L112,368 Z" />
+          <path class="muscle" data-mg="hamstrings" d="M192,310 L158,310 L164,375 L188,368 Z" />
+          <path class="muscle" data-mg="calves" d="M106,370 L136,370 L130,490 L110,480 Z" transform="translate(0, -110)" />
+          <path class="muscle" data-mg="calves" d="M194,370 L164,370 L170,490 L190,480 Z" transform="translate(0, -110)" />
+        </svg>`;
+      }
+    }
+
+    function renderCharacterView() {
+      const img = document.getElementById("charImageView");
+      const overlayWrap = document.getElementById("svgOverlayWrap");
+      const hint = document.getElementById("activeZoneHint");
+      
+      if (state.view === "front") {
+        img.src = "watermarked_img_11394652652541726484.jpg";
+        img.alt = "Anterior Pixel Muscle View";
+      } else {
+        img.src = "";
+        img.alt = "Posterior Pixel Muscle View";
+      }
+
+      overlayWrap.innerHTML = getOverlaySVG(state.view);
+
+      overlayWrap.querySelectorAll(".muscle").forEach(el => {
+        const mgId = el.dataset.mg;
+        el.addEventListener("click", () => selectMuscle(mgId));
+        if (mgId === state.selectedMg) el.classList.add("selected");
+      });
+
+      if (state.selectedMg) {
+        const meta = MUSCLES.find(m => m.id === state.selectedMg);
+        hint.textContent = `▶ TARGET: ${meta ? meta.label.toUpperCase() : ''} ◀`;
+        hint.style.color = "var(--accent-coral)";
+      } else {
+        hint.textContent = "▶ CLICK MUSCLE OR LEGEND ◀";
+        hint.style.color = "var(--primary-cyan)";
+      }
+
+      document.getElementById("btnFront").classList.toggle("active", state.view === "front");
+      document.getElementById("btnBack").classList.toggle("active", state.view === "back");
+    }
+
+    function renderLegend() {
+      const wrap = document.getElementById("legend");
+      wrap.innerHTML = "";
+      MUSCLES.filter(m => m.views.includes(state.view)).forEach(m => {
+        const b = document.createElement("button");
+        b.textContent = m.label;
+        if (m.id === state.selectedMg) b.classList.add("active");
+        b.onclick = () => selectMuscle(m.id);
+        wrap.appendChild(b);
+      });
+    }
+
+    const customMgSelect = document.getElementById("customMg");
+    MUSCLES.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      opt.textContent = m.label;
+      customMgSelect.appendChild(opt);
+    });
+
+    function selectMuscle(id) {
+      state.selectedMg = id;
+      state.checked[id] = state.checked[id] || new Set();
+      document.getElementById("globalSearch").value = "";
+      state.searchQuery = "";
+      renderCharacterView();
+      renderLegend();
+      renderPicker();
+    }
+
+    function handleGlobalSearch(val) {
+      state.searchQuery = val.trim().toLowerCase();
+      state.selectedMg = null;
+      renderCharacterView();
+      renderLegend();
+      renderPicker();
+    }
+
+    function estMinutesArray(ex) {
+      if (ex[7]) return parseFloat(ex[7]);
+      const sets = ex[2] || 1;
+      const val = ex[3] || 10;
+      const mode = ex[4] || "reps";
+      if (mode === "time") return (val * sets) / 60;
+      return ((val * 2.5 * sets) + (sets - 1) * 20) / 60;
+    }
+
+    function estMinutesObj(ex) {
+      if (ex.manualTime) return parseFloat(ex.manualTime);
+      if (ex.mode === "time") return (ex.val * ex.sets) / 60;
+      return ((ex.val * 2.5 * ex.sets) + (ex.sets - 1) * 20) / 60;
+    }
+
+    function renderPicker() {
+      const mg = state.selectedMg;
+      const query = state.searchQuery;
+      document.getElementById("addToWorkoutBtn").disabled = !mg && !query;
+      
+      const list = document.getElementById("exList");
+      list.innerHTML = "";
+
+      let itemsToDisplay = [];
+      if (query) {
+        document.getElementById("mgName").textContent = `Search results for "${query}"`;
+        document.getElementById("mgHint").textContent = "Select from matching exercises";
+        for (const [mId, exArr] of Object.entries(state.exercises)) {
+          exArr.forEach((ex, idx) => {
+            const name = ex[0] || "";
+            const desc = ex[1] || "";
+            if (name.toLowerCase().includes(query) || desc.toLowerCase().includes(query)) {
+              itemsToDisplay.push({ mgId: mId, idx, ex });
+            }
+          });
+        }
+      } else if (mg) {
+        const meta = MUSCLES.find(m => m.id === mg);
+        document.getElementById("mgName").textContent = meta ? meta.label : mg;
+        document.getElementById("mgHint").textContent = "Check exercises to add";
+        state.checked[mg] = state.checked[mg] || new Set();
+        (state.exercises[mg] || []).forEach((ex, idx) => {
+          itemsToDisplay.push({ mgId: mg, idx, ex });
+        });
+      } else {
+        document.getElementById("mgName").textContent = "Select a muscle group or search";
+        document.getElementById("mgHint").textContent = "";
+        return;
+      }
+
+      if (itemsToDisplay.length === 0) {
+        list.innerHTML = '<p class="empty">No exercises found.</p>';
+        return;
+      }
+
+      itemsToDisplay.forEach(item => {
+        const { mgId, idx, ex } = item;
+        const [name, desc, sets, val, mode, yt, imgData] = ex;
+        const checkedSet = state.checked[mgId] = state.checked[mgId] || new Set();
+        const isChecked = checkedSet.has(idx);
+
+        const row = document.createElement("div");
+        row.className = "exRow";
+        row.innerHTML = `
+          <input type="checkbox" ${isChecked ? "checked" : ""}>
+          <div class="exInfo">
+            <div class="exName">${name}</div>
+            <div class="exDesc">${desc}</div>
+            <div class="exLinks">
+              ${yt ? `<a href="${yt}" target="_blank">📺 Watch YouTube</a>` : ""}
+              ${imgData ? `<a href="${imgData}" target="_blank">🖼️ View Instruction</a>` : ""}
+            </div>
+            <div class="exMeta">
+              <input type="number" min="1" value="${sets}" data-f="sets"> sets ×
+              <input type="number" min="1" value="${val}" data-f="val"> ${mode === "time" ? "sec" : "reps"}
+              <span style="margin-left:auto; font-size:11px; color:var(--primary-cyan);">~${estMinutesArray(ex).toFixed(1)}m</span>
+            </div>
+          </div>
+          <button class="rmBtn" title="Remove">✕</button>`;
+
+        row.querySelector('input[type=checkbox]').onchange = e => {
+          if (e.target.checked) checkedSet.add(idx); else checkedSet.delete(idx);
+        };
+        row.querySelectorAll('input[type=number]').forEach(inp => {
+          inp.onchange = () => {
+            const f = inp.dataset.f;
+            const v = Math.max(1, parseInt(inp.value) || 1);
+            if (f === "sets") state.exercises[mgId][idx][2] = v;
+            else state.exercises[mgId][idx][3] = v;
+            persist();
+            renderPicker();
+          };
+        });
+        row.querySelector('.rmBtn').onclick = () => {
+          state.exercises[mgId].splice(idx, 1);
+          checkedSet.delete(idx);
+          persist();
+          renderPicker();
+        };
+        list.appendChild(row);
+      });
+    }
+
+    document.getElementById("btnFront").onclick = () => { state.view = "front"; renderCharacterView(); renderLegend(); };
+    document.getElementById("btnBack").onclick = () => { state.view = "back"; renderCharacterView(); renderLegend(); };
+
+    document.getElementById("addCustomExBtn").onclick = () => {
+      const name = document.getElementById("customName").value.trim();
+      const desc = document.getElementById("customDesc").value.trim();
+      const targetMg = document.getElementById("customMg").value;
+      const timeStr = document.getElementById("customTime").value.trim();
+      const yt = document.getElementById("customYoutube").value.trim();
+      const fileInput = document.getElementById("customImgFile");
+
+      if (!name) { alert("Please enter a custom exercise name."); return; }
+      const manualTime = timeStr ? parseFloat(timeStr) : null;
+
+      const finishAdd = (imgUrl = "") => {
+        state.exercises[targetMg] = state.exercises[targetMg] || [];
+        state.exercises[targetMg].push([name, desc || "Custom rehabilitation movement", 2, 10, "reps", yt, imgUrl, manualTime]);
+        document.getElementById("customName").value = "";
+        document.getElementById("customDesc").value = "";
+        document.getElementById("customTime").value = "";
+        document.getElementById("customYoutube").value = "";
+        document.getElementById("customImgFile").value = "";
+        persist();
+        if (state.selectedMg === targetMg) renderPicker(); else selectMuscle(targetMg);
+      };
+
+      if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => finishAdd(e.target.result);
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        finishAdd("");
+      }
+    };
+
+    document.getElementById("addToWorkoutBtn").onclick = () => {
+      const mgList = state.selectedMg ? [state.selectedMg] : Object.keys(state.exercises);
+      mgList.forEach(mgId => {
+        const checkedSet = state.checked[mgId];
+        if (!checkedSet) return;
+        const meta = MUSCLES.find(m => m.id === mgId) || { label: mgId };
+        checkedSet.forEach(idx => {
+          const ex = state.exercises[mgId][idx];
+          if (!ex) return;
+          state.workout.push({
+            mg: meta.label,
+            name: ex[0],
+            sets: ex[2],
+            val: ex[3],
+            mode: ex[4],
+            manualTime: ex[7]
+          });
+        });
+        checkedSet.clear();
+      });
+      persist();
+      renderPicker();
+      renderWorkout();
+    };
+
+    let workoutSearchQuery = "";
+    function handleWorkoutSearch(val) {
+      workoutSearchQuery = val.trim().toLowerCase();
+      renderWorkout();
+    }
+
+    function renderWorkout() {
+      const wrap = document.getElementById("workoutList");
+      wrap.innerHTML = "";
+      const filtered = state.workout.map((ex, i) => ({ex, i})).filter(item => 
+        item.ex.name.toLowerCase().includes(workoutSearchQuery) || 
+        item.ex.mg.toLowerCase().includes(workoutSearchQuery)
+      );
+
+      if (state.workout.length === 0) {
+        wrap.innerHTML = '<p class="empty">No exercises added yet. Select a muscle group or search above.</p>';
+      } else if (filtered.length === 0) {
+        wrap.innerHTML = '<p class="empty">No matches found in your active routine.</p>';
+      } else {
+        filtered.forEach(item => {
+          const { ex, i } = item;
+          const row = document.createElement("div");
+          row.className = "wRow";
+          const mins = estMinutesObj(ex);
+          row.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <span class="wTag">${ex.mg}</span>
+            </div>
+            <span class="wName" style="margin-left:8px;">${ex.name}</span>
+            <span class="wMeta">
+              <input type="number" class="mini-input" min="1" value="${ex.sets}" data-idx="${i}" data-f="sets">s ×
+              <input type="number" class="mini-input" min="1" value="${ex.val}" data-idx="${i}" data-f="val">${ex.mode === 'time'?'s':'r'}
+              <br><span style="color:var(--primary-cyan); font-weight:600; display:block; margin-top:4px;">~${mins.toFixed(1)}m</span>
+            </span>
+            <button class="rmBtn" data-idx="${i}">✕</button>`;
+
+          row.querySelectorAll('input').forEach(inp => {
+            inp.onchange = () => {
+              const idx = parseInt(inp.dataset.idx);
+              const f = inp.dataset.f;
+              const v = Math.max(1, parseInt(inp.value) || 1);
+              state.workout[idx][f] = v;
+              persist();
+              renderWorkout();
+            };
+          });
+
+          row.querySelector('.rmBtn').onclick = () => {
+            state.workout.splice(i, 1);
+            persist();
+            renderWorkout();
+          };
+          wrap.appendChild(row);
+        });
+      }
+
+      const totalMins = state.workout.reduce((acc, ex) => acc + estMinutesObj(ex), 0);
+      document.getElementById("totalTime").textContent = `${totalMins.toFixed(1)} min total`;
+    }
+
+    renderCharacterView();
+    renderLegend();
+    renderPicker();
+    renderWorkout();
+  </script>
+</div>
+</div>
+
+
+
+  
+
+
+
+
+
+  
 
   <!-- Message Toast Banner -->
   <div id="toastMessage" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl z-50 transition-all border border-indigo-400/30">
