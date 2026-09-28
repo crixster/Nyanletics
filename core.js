@@ -84,27 +84,31 @@ function switchTab(tab) {
   const macrosTab = document.getElementById('macrosTab');
   const rehabTab = document.getElementById('rehabTab');
   const runTab = document.getElementById('runTab');
+  const timerTab = document.getElementById('timerTab');
 
   const tabBtnLog = document.getElementById('tabBtnLog') || document.getElementById('nav-log');
   const tabBtnPlates = document.getElementById('tabBtnPlates') || document.getElementById('nav-plate') || document.getElementById('nav-plates');
   const tabBtnMacros = document.getElementById('tabBtnMacros') || document.getElementById('nav-macro') || document.getElementById('nav-macros');
   const tabBtnRehab = document.getElementById('tabBtnRehab') || document.getElementById('nav-rehab');
   const tabBtnRunning = document.getElementById('tabBtnRunning');
+  const tabBtnTimer = document.getElementById('tabBtnTimer');
 
   logTab?.classList.add('hidden');
   platesTab?.classList.add('hidden');
   macrosTab?.classList.add('hidden');
   rehabTab?.classList.add('hidden');
   runTab?.classList.add('hidden');
+  timerTab?.classList.add('hidden');
 
-  const inactiveClass = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-300 hover:text-white flex-shrink-0 flex items-center justify-center gap-2 px-4";
-  const activeClass = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 flex-shrink-0 flex items-center justify-center gap-2 px-4";
-
+const inactiveClass = "w-full py-2.5 px-2 text-xs font-semibold rounded-xl transition-all text-slate-300 hover:text-white flex items-center justify-center gap-1.5";
+  const activeClass = "w-full py-2.5 px-2 text-xs font-semibold rounded-xl transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-1.5";
+  
   if (tabBtnLog) tabBtnLog.className = inactiveClass;
   if (tabBtnPlates) tabBtnPlates.className = inactiveClass;
   if (tabBtnMacros) tabBtnMacros.className = inactiveClass;
   if (tabBtnRehab) tabBtnRehab.className = inactiveClass;
   if (tabBtnRunning) tabBtnRunning.className = inactiveClass;
+  if (tabBtnTimer) tabBtnTimer.className = inactiveClass;
 
   if (tabName === 'log') {
     logTab?.classList.remove('hidden');
@@ -129,10 +133,14 @@ function switchTab(tab) {
     if (typeof renderWorkout === 'function') renderWorkout();
     if (typeof renderSchedule === 'function') renderSchedule();
   } else if (tabName === 'running') {
-  runTab?.classList.remove('hidden');
-  if (tabBtnRunning) tabBtnRunning.className = activeClass;
-  if (typeof renderRunning === 'function') renderRunning();
-}
+    runTab?.classList.remove('hidden');
+    if (tabBtnRunning) tabBtnRunning.className = activeClass;
+    if (typeof renderRunning === 'function') renderRunning();
+  } else if (tabName === 'timer') {
+    timerTab?.classList.remove('hidden');
+    if (tabBtnTimer) tabBtnTimer.className = activeClass;
+    if (typeof initTimerUI === 'function') initTimerUI();
+  }
 }
 
 
@@ -172,6 +180,7 @@ window.onload = function() {
   if (typeof renderDay === 'function') renderDay();
   if (typeof initRehabUI === 'function') initRehabUI();
   if (typeof initRunningUI === 'function') initRunningUI();
+  if (typeof initTimerUI === 'function') initTimerUI();
 
   
   initPwaInstallUI();

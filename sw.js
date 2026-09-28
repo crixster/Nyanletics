@@ -24,6 +24,7 @@ const APP_SHELL = [
   './rehab.js',
   './rehab.css',
   './running.js',
+  './timer.js',
   './manifest.json',
   './icon.jpg',
   './page-icon.png'

@@ -224,11 +224,28 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
   }
 
   // ---------- init ----------
-  function ensure() {
+function ensure() {
     const root = $('rehabTab');
     if (!root || S.ready) return !!root;
+    
+    // Load existing exercises from LocalStorage
     S.exercises = load(KEY.ex, null);
-    if (!Array.isArray(S.exercises) || !S.exercises.length) { S.exercises = defaultExercises(); saveEx(); }
+    if (!Array.isArray(S.exercises) || !S.exercises.length) {
+      S.exercises = defaultExercises();
+      saveEx();
+    } else {
+      // Auto-sync missing default exercises (e.g. joints) into LocalStorage
+      const existingNames = new Set(S.exercises.map(e => e.name));
+      let added = false;
+      defaultExercises().forEach(de => {
+        if (!existingNames.has(de.name)) {
+          S.exercises.push(de);
+          added = true;
+        }
+      });
+      if (added) saveEx();
+    }
+
     S.routines = load(KEY.routines, []);
     S.sched = load(KEY.sched, {});
     const d = load(KEY.draft, null);
@@ -243,6 +260,8 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
     S.ready = true;
     return true;
   }
+
+
   function renderAll() {
     renderCharacterView(); renderLegend(); renderPicker(); renderWorkout(); renderSchedule();
   }
