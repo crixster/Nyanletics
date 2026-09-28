@@ -214,16 +214,18 @@
               <span>TIMER ACTIVE — Controls Locked until Reset</span>
             </div>
           `}
-          <button onclick="window.nyanTimer.toggleLandscape()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 flex-shrink-0" title="Rotate timer to landscape">
-            <i class="fa-solid ${isLandscapeMode() ? 'fa-compress text-amber-400' : 'fa-rotate text-indigo-400'}"></i>
-            <span>${isLandscapeMode() ? 'Exit' : 'Rotate'}</span>
-          </button>
 
-          <button onclick="window.nyanTimer.toggleMute()" ...   <!-- existing mute button -->
-          <button onclick="window.nyanTimer.toggleMute()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 flex-shrink-0" title="Toggle Sound Cues">
-            <i class="fa-solid ${isMuted ? 'fa-volume-xmark text-rose-400' : 'fa-volume-high text-emerald-400'}"></i>
-            <span class="hidden sm:inline">${isMuted ? 'Muted' : 'Sound On'}</span>
-          </button>
+          <div class="flex flex-col gap-1.5 flex-shrink-0">
+            <button onclick="window.nyanTimer.toggleMute()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5" title="Toggle Sound Cues">
+              <i class="fa-solid ${isMuted ? 'fa-volume-xmark text-rose-400' : 'fa-volume-high text-emerald-400'}"></i>
+              <span class="hidden sm:inline">${isMuted ? 'Muted' : 'Sound On'}</span>
+            </button>
+
+            <button onclick="window.nyanTimer.toggleLandscape()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5" title="Rotate timer to landscape">
+              <i class="fa-solid ${isLandscapeMode() ? 'fa-compress text-amber-400' : 'fa-rotate text-indigo-400'}"></i>
+              <span>${isLandscapeMode() ? 'Exit' : 'Rotate'}</span>
+            </button>
+          </div>
         </div>
 
         <div id="timerDisplayArea">
