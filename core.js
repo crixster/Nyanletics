@@ -92,6 +92,7 @@ function switchTab(tab) {
   const tabBtnRehab = document.getElementById('tabBtnRehab') || document.getElementById('nav-rehab');
   const tabBtnRunning = document.getElementById('tabBtnRunning');
   const tabBtnTimer = document.getElementById('tabBtnTimer');
+  document.body.classList.toggle('timer-active', tabName === 'timer');
 
   logTab?.classList.add('hidden');
   platesTab?.classList.add('hidden');

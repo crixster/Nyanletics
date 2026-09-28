@@ -24,11 +24,13 @@
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="plate-loader.css">
   <link rel="stylesheet" href="rehab.css">
+  <link rel="stylesheet" href="timer.css">
+
 </head>
 <body class="min-h-screen pb-12">
 
-  <div class="max-w-xl mx-auto px-4 pt-6">
-<header class="text-center mb-6">
+<div class="app-shell max-w-xl mx-auto px-4 pt-6">
+<header class="app-header text-center mb-6">
   <h1 class="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 flex items-center justify-center gap-2.5">
     <img src="page-icon.png" alt="Cat Icon" class="w-16 h-16 object-contain">
     Nyanletics Hybrid Training
@@ -46,7 +48,7 @@
     </header>
 
 <!-- Navigation Tabs (2 Rows of 3 Buttons) -->
-<div class="grid grid-cols-3 gap-1.5 bg-slate-800/80 p-1.5 rounded-2xl mb-6 border border-slate-700/50">
+<div class="app-nav grid grid-cols-3 gap-1.5 bg-slate-800/80 p-1.5 rounded-2xl mb-6 border border-slate-700/50">
   <!-- Row 1 -->
   <button id="tabBtnLog" onclick="switchTab('log')" class="w-full py-2.5 px-2 text-xs font-semibold rounded-xl transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-1.5">
     <i class="fa-solid fa-clipboard-list"></i><span class="truncate">Lifting Log</span>

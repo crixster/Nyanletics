@@ -1,0 +1,26 @@
+@media (orientation: landscape) and (max-height: 500px) {
+  body.timer-active .app-header,
+  body.timer-active .app-nav {
+    display: none;
+  }
+
+  body.timer-active {
+    padding-bottom: 0;
+  }
+
+  body.timer-active .app-shell {
+    max-width: none;
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+
+  body.timer-active #timerTab .font-black.font-mono {
+    font-size: clamp(4rem, 38vh, 9rem);
+    line-height: 1;
+  }
+
+  body.timer-active #timerTab .max-h-\[380px\] {
+    max-height: 45vh;
+  }
+}
