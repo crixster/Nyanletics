@@ -12,13 +12,13 @@
 
 // ---------- Muscle groups & Joint groups: id, label, hue ----------
   const GROUPS = [
-    ['neck', 'Neck', 200], ['traps', 'Traps', 265], ['shoulders', 'Shoulders', 35],
-    ['shoulder_joints', 'Shoulders (Joint)', 300], ['chest', 'Chest', 0], 
+    ['neck', 'Neck', 200], ['traps', 'Traps', 265], 
+    ['shoulders', 'Shoulders', 35], ['chest', 'Chest', 0], 
     ['biceps', 'Biceps', 48], ['triceps', 'Triceps', 28], ['elbows', 'Elbows (Joint)', 160], 
     ['forearms', 'Forearms', 170], ['wrists', 'Wrists (Joint)', 220],
     ['abs', 'Abs', 140], ['obliques', 'Obliques', 185], ['lats', 'Lats', 120],
     ['lowback', 'Lower Back', 290], ['glutes', 'Glutes', 320], ['hips', 'Hips', 80],
-    ['hip_joints', 'Hips (Joint)', 105], ['quads', 'Quads', 10], ['hamstrings', 'Hamstrings', 345],
+    ['quads', 'Quads', 10], ['hamstrings', 'Hamstrings', 345],
     ['knees', 'Knees (Joint)', 150], ['calves', 'Calves', 215], ['shins', 'Shins', 95],
     ['ankles', 'Ankles (Joint)', 250], ['feet', 'Feet', 240]
   ];
@@ -109,14 +109,14 @@ shins|Kneeling Shin Stretch|2|30|s|10
 feet|Ankle Circles|2|15|r|10
 feet|Towel Scrunches|3|15|r|20
 feet|Plantar Fascia Ball Roll|1|60|s|0
-shoulder_joints|Shoulder CARs (Controlled Rotations)|3|5|r|20
-shoulder_joints|Pendulum Swings|2|30|s|10
+shoulders|Shoulder CARs (Controlled Rotations)|3|5|r|20
+shoulders|Pendulum Swings|2|30|s|10
 elbows|Elbow CARs|2|10|r|15
 elbows|Forearm Pronation / Supination|3|12|r|20
 wrists|Wrist CARs|2|10|r|10
 wrists|Prayer Stretch|2|30|s|15
-hip_joints|Hip CARs|3|5|r|20
-hip_joints|90/90 Hip Rotations|2|8|r|20
+hips|Hip CARs|3|5|r|20
+hips|90/90 Hip Rotations|2|8|r|20
 knees|Tibial Rotations|2|10|r|15
 knees|Terminal Knee Extensions|3|12|r|20
 ankles|Ankle CARs / Alphabet|2|10|r|15
@@ -227,29 +227,48 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
 function ensure() {
     const root = $('rehabTab');
     if (!root || S.ready) return !!root;
-    
+
+    // Groups that were merged into another group
+    const MERGED = { hip_joints: 'hips', shoulder_joints: 'shoulders' };
+    const fixG = g => MERGED[g] || g;
+
     // Load existing exercises from LocalStorage
     S.exercises = load(KEY.ex, null);
+
+    let migrated = false;
+    const fixEx = e => {
+      if (MERGED[e.group]) { e.group = fixG(e.group); migrated = true; }
+      if (Array.isArray(e.also) && e.also.some(g => MERGED[g])) {
+        e.also = [...new Set(e.also.map(fixG))].filter(g => g !== e.group);
+        migrated = true;
+      }
+    };
+    if (Array.isArray(S.exercises)) S.exercises.forEach(fixEx);
+
     if (!Array.isArray(S.exercises) || !S.exercises.length) {
       S.exercises = defaultExercises();
       saveEx();
     } else {
-      // Auto-sync missing default exercises (e.g. joints) into LocalStorage
       const existingNames = new Set(S.exercises.map(e => e.name));
       let added = false;
       defaultExercises().forEach(de => {
-        if (!existingNames.has(de.name)) {
-          S.exercises.push(de);
-          added = true;
-        }
+        if (!existingNames.has(de.name)) { S.exercises.push(de); added = true; }
       });
-      if (added) saveEx();
+      if (added || migrated) saveEx();
     }
 
     S.routines = load(KEY.routines, []);
     S.sched = load(KEY.sched, {});
     const d = load(KEY.draft, null);
     if (d && Array.isArray(d.items)) S.draft = Object.assign(S.draft, d);
+
+    // Same migration for routine items and the in-progress draft
+    let rMig = false;
+    const fixItem = i => { if (MERGED[i.group]) { i.group = fixG(i.group); rMig = true; } };
+    S.routines.forEach(r => (r.items || []).forEach(fixItem));
+    (S.draft.items || []).forEach(fixItem);
+    if (rMig) { saveRoutines(); saveDraft(); }
+
     root.innerHTML = skeleton();
     $('rhBody').addEventListener('click', e => {
       const t = e.target.closest('[data-g]');
@@ -273,10 +292,9 @@ function ensure() {
 
     // Joint button coordinates relative to figure center
     const JOINTS = [
-      ['shoulder_joints', 28, 68],
       ['elbows', 39, 135],
       ['wrists', 45, 184],
-      ['hip_joints', 18, 170],
+      ['hips', 18, 170, 'b'],
       ['knees', 18, 269],
       ['ankles', 16, 349]
     ];
@@ -327,8 +345,9 @@ function ensure() {
       if (view === 'f') o += `<path d="M-10 122L10 122M-10 142L10 142M0 102L0 166" stroke="#0f172a" stroke-opacity=".55" stroke-width="1" fill="none" pointer-events="none"/>`;
 
       // Interactive Joint Buttons (Shoulders, Elbows, Wrists, Hips, Knees, Ankles)
-      JOINTS.forEach(([gid, jx, jy]) => {
-        const activeClass = S.group === gid ? ' active' : '';
+      JOINTS.forEach(([gid, jx, jy, only]) => {
+  if (only && only !== view) return;
+  const activeClass = S.group === gid ? ' active' : '';
         o += `<circle class="rh-region rh-joint${activeClass}" data-g="${gid}" cx="${-jx}" cy="${jy}" r="6.5" fill="${color(gid)}" stroke="#ffffff" stroke-width="1.5"><title>${LABEL[gid]}</title></circle>`;
         o += `<circle class="rh-region rh-joint${activeClass}" data-g="${gid}" cx="${jx}" cy="${jy}" r="6.5" fill="${color(gid)}" stroke="#ffffff" stroke-width="1.5"><title>${LABEL[gid]}</title></circle>`;
       });
@@ -361,6 +380,19 @@ function ensure() {
     </svg>`;
     $('rhSelected').textContent = LABEL[S.group];
   };
+
+  // ---------- Legend (tap-to-select chips under the body map) ----------
+  window.renderLegend = function () {
+    if (!ensure()) return;
+    const el = $('rhLegend'); if (!el) return;
+    el.innerHTML = GROUPS.map(([id, label]) => {
+      const on = S.group === id;
+      return `<button type="button" onclick="rh.pick('${id}')"
+        class="rh-chip inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-semibold transition ${on ? 'bg-indigo-600/30 border-indigo-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">
+        <span class="w-2 h-2 rounded-full" style="background:${color(id)}"></span>${label}</button>`;
+    }).join('');
+  };
+
 
   // ---------- Suggested exercise list ----------
   // An exercise lives under its primary group (e.group) and is also shown under every group in e.also.

@@ -18,8 +18,8 @@ const plateDefinitions = [
   { id: 'white5kg', name: 'Olympic White', weight: 5, unit: 'kg', color: '#f8fafc', textColor: '#0f172a', height: 70, width: 13 },
   { id: 'orange2d5kg', name: 'Change Orange', weight: 2.5, unit: 'kg', color: '#f97316', height: 58, width: 12 },
   { id: 'yellow1d5kg', name: 'Change Yellow', weight: 1.5, unit: 'kg', color: '#fde047', textColor: '#0f172a', height: 50, width: 11 },
-  { id: 'white1kg', name: 'Change White', weight: 1, unit: 'kg', color: '#e2e8f0', textColor: '#0f172a', height: 44, width: 10 },
-
+  { id: 'green1kg', name: 'Change Green', weight: 1, unit: 'kg', color: '#15803d', height: 44, width: 10 },
+  { id: 'white0d5kg', name: 'Change White', weight: 0.5, unit: 'kg', color: '#f8fafc', textColor: '#0f172a', height: 38, width: 9 },
   { id: 'black45lb', name: 'Bumper 45lb', weight: 45, unit: 'lb', color: '#334155', height: 110, width: 18 },
   { id: 'black35lb', name: 'Bumper 35lb', weight: 35, unit: 'lb', color: '#475569', height: 100, width: 17 },
   { id: 'black25lb', name: 'Bumper 25lb', weight: 25, unit: 'lb', color: '#64748b', height: 90, width: 15 },
@@ -28,7 +28,7 @@ const plateDefinitions = [
 
 const defaultInventory = {
   red25kg: 16, blue20kg: 16, yellow15kg: 16, green10kg: 16, white5kg: 8,
-  orange2d5kg: 2, yellow1d5kg: 2, white1kg: 2,
+  orange2d5kg: 4, yellow1d5kg: 4, green1kg: 4, white0d5kg: 4,
   black45lb: 16, black35lb: 16, black25lb: 16, grey10lb: 16
 };
 

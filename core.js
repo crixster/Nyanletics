@@ -1,5 +1,5 @@
 // =====================================================================
-// core.js — Apex Fitness: shared app shell
+// core.js — Nyanletics Hybrid Training shared app shell
 // Owns: tab switching, toast notifications, tempo formatting, PWA install.
 // =====================================================================
 
