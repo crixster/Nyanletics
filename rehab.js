@@ -108,7 +108,7 @@ feet|Towel Scrunches|3|15|r|20
 feet|Plantar Fascia Ball Roll|1|60|s|0`;
   const defaultExercises = () => DEFAULTS.trim().split('\n').map(l => {
     const p = l.split('|');
-    return { id: uid(), group: p[0], name: p[1], sets: +p[2], reps: +p[3], unit: p[4], rest: +p[5] };
+    return { id: uid(), group: p[0], name: p[1], sets: +p[2], reps: +p[3], unit: p[4], rest: +p[5], also: [], desc: '', video: '', img: '' };
   });
 
   const DAYS = [['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun']];
@@ -120,7 +120,7 @@ feet|Plantar Fascia Ball Roll|1|60|s|0`;
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
-  const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.warn('rehab: save failed', e); } };
+  const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { console.warn('rehab: save failed', e); return false; } };
   const toast = m => (typeof window.showToast === 'function' ? window.showToast(m) : console.log(m));
   const exSecs = e => e.sets * (e.unit === 's' ? e.reps : e.reps * SEC_PER_REP) + Math.max(0, e.sets - 1) * (e.rest || 0);
   const sumSecs = items => items.reduce((a, e) => a + exSecs(e), 0);
@@ -134,9 +134,9 @@ feet|Plantar Fascia Ball Roll|1|60|s|0`;
   const S = {
     ready: false, group: 'quads', exercises: [], routines: [], sched: {},
     draft: { id: null, name: '', budget: 30, items: [] },
-    ui: { routinesOpen: true, schedOpen: true, openRoutines: {}, openSched: {}, editing: undefined, q: '' }
+    ui: { routinesOpen: true, schedOpen: true, openRoutines: {}, openSched: {}, editing: undefined, q: '', openEx: {}, formImg: '' }
   };
-  const saveEx = () => store(KEY.ex, S.exercises);
+  const saveEx = () => { if (!store(KEY.ex, S.exercises)) toast('Storage full — use a smaller photo or remove one'); };
   const saveRoutines = () => store(KEY.routines, S.routines);
   const saveSched = () => store(KEY.sched, S.sched);
   const saveDraft = () => store(KEY.draft, S.draft);
@@ -266,8 +266,30 @@ feet|Plantar Fascia Ball Roll|1|60|s|0`;
   };
 
   // ---------- Suggested exercise list ----------
+  // An exercise lives under its primary group (e.group) and is also shown under every group in e.also.
+  const belongs = (e, g) => e.group === g || (e.also || []).includes(g);
+  const cleanUrl = u => {
+    u = (u || '').trim(); if (!u) return '';
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    try { return new URL(u).href; } catch (e) { return ''; }
+  };
+  // Resize photos to max 640px JPEG so they fit comfortably in localStorage
+  const readImage = file => new Promise((res, rej) => {
+    const fr = new FileReader(); fr.onerror = rej;
+    fr.onload = () => { const im = new Image(); im.onerror = rej;
+      im.onload = () => { const k = Math.min(1, 640 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.75)); };
+      im.src = fr.result; };
+    fr.readAsDataURL(file);
+  });
+  const prevHTML = () => S.ui.formImg
+    ? `<div class="relative inline-block mt-2"><img src="${esc(S.ui.formImg)}" class="h-24 rounded-lg border border-slate-700 object-cover">
+        <button type="button" onclick="rh.clearImage()" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px]"><i class="fa-solid fa-xmark"></i></button></div>` : '';
+
   function formHTML(e) {
-    const v = Object.assign({ name: '', sets: 2, reps: 10, unit: 'r', rest: 30 }, e);
+    const v = Object.assign({ name: '', sets: 2, reps: 10, unit: 'r', rest: 30, also: [], desc: '', video: '' }, e);
+    const prim = v.group || S.group;
     return `<div class="bg-slate-900/90 border border-indigo-500/30 rounded-xl p-3 space-y-2">
       <input id="rhF_name" class="${INP}" placeholder="Exercise name" value="${esc(v.name)}">
       <div class="grid grid-cols-4 gap-2">
@@ -277,6 +299,19 @@ feet|Plantar Fascia Ball Roll|1|60|s|0`;
           <option value="r"${v.unit === 'r' ? ' selected' : ''}>Reps</option><option value="s"${v.unit === 's' ? ' selected' : ''}>Hold (s)</option></select></div>
         <div><label class="${LBL}">Rest (s)</label><input id="rhF_rest" type="number" min="0" step="5" value="${v.rest}" class="${INP}"></div>
       </div>
+      <div><label class="${LBL}">Also works these muscle groups (tick to show it under them too)</label>
+        <div class="flex flex-wrap gap-1.5">${GROUPS.map(g => {
+          const lock = g[0] === prim;
+          return `<label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] ${lock ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-200' : 'bg-slate-800 border-slate-700 text-slate-300'} cursor-pointer select-none">
+            <input type="checkbox" class="rhF_grp" value="${g[0]}" ${lock || v.also.includes(g[0]) ? 'checked' : ''} ${lock ? 'disabled' : ''}>${g[1]}${lock ? ' (main)' : ''}</label>`;
+        }).join('')}</div></div>
+      <div><label class="${LBL}">Description / how to do it</label>
+        <textarea id="rhF_desc" rows="3" class="${INP}" placeholder="Cues, range of motion, what to feel…">${esc(v.desc)}</textarea></div>
+      <div><label class="${LBL}">Video link (YouTube, etc.)</label>
+        <input id="rhF_video" type="url" inputmode="url" class="${INP}" placeholder="https://…" value="${esc(v.video)}"></div>
+      <div><label class="${LBL}">Photo</label>
+        <input id="rhF_file" type="file" accept="image/*" onchange="rh.pickImage(this)" class="text-[11px] text-slate-400 file:mr-2 file:px-2.5 file:py-1.5 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-300 file:text-xs">
+        <div id="rhF_prev">${prevHTML()}</div></div>
       <div class="flex gap-2">
         <button onclick="rh.saveEx()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 rounded-lg text-xs transition">Save</button>
         <button onclick="rh.cancelEx()" class="${BTN}">Cancel</button></div></div>`;
@@ -284,20 +319,30 @@ feet|Plantar Fascia Ball Roll|1|60|s|0`;
 
   window.renderPicker = function () {
     if (!ensure()) return;
-    const list = S.exercises.filter(e => e.group === S.group);
+    const list = S.exercises.filter(e => belongs(e, S.group));
     $('rhPickerTitle').innerHTML = `<span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5" style="background:${color(S.group)}"></span>${LABEL[S.group]} — suggested exercises`;
     let html = S.ui.editing === null ? formHTML({}) : '';
     if (!list.length && S.ui.editing !== null) html += `<p class="text-xs text-slate-500 italic">No exercises here yet — tap Custom to add one.</p>`;
     html += list.map(e => {
       if (S.ui.editing === e.id) return formHTML(e);
-      const inDraft = S.draft.items.some(i => i.src === e.id);
-      return `<div class="flex items-center gap-2 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2">
-        <div class="flex-1 min-w-0"><div class="text-xs font-bold text-slate-100 truncate">${esc(e.name)}</div>
-          <div class="text-[11px] text-slate-400">${dose(e)} · rest ${e.rest}s · ≈ ${fmtMin(exSecs(e))}</div></div>
-        <button onclick="rh.editEx('${e.id}')" class="p-1.5 text-slate-400 hover:text-white" title="Edit"><i class="fa-solid fa-pen text-[11px]"></i></button>
-        <button onclick="rh.delEx('${e.id}')" class="p-1.5 text-slate-400 hover:text-rose-400" title="Delete"><i class="fa-solid fa-trash text-[11px]"></i></button>
-        <button onclick="rh.toggleDraft('${e.id}')" class="w-8 h-8 rounded-lg text-xs font-bold transition ${inDraft ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}" title="${inDraft ? 'Remove from workout' : 'Add to workout'}">
-          <i class="fa-solid ${inDraft ? 'fa-check' : 'fa-plus'}"></i></button></div>`;
+      const inDraft = S.draft.items.some(i => i.src === e.id), open = !!S.ui.openEx[e.id];
+      const chips = [e.group].concat(e.also || []).map(g => `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-800 text-[10px] text-slate-300"><span class="w-1.5 h-1.5 rounded-full" style="background:${color(g)}"></span>${LABEL[g] || g}</span>`).join(' ');
+      return `<div class="bg-slate-900/70 border border-slate-800 rounded-xl">
+        <div class="flex items-center gap-2 px-3 py-2">
+          <button onclick="rh.toggleEx('${e.id}')" class="flex-1 min-w-0 text-left">
+            <div class="text-xs font-bold text-slate-100 truncate">${esc(e.name)}</div>
+            <div class="text-[11px] text-slate-400">${dose(e)} · rest ${e.rest}s · ≈ ${fmtMin(exSecs(e))}</div></button>
+          <span class="text-[11px] text-indigo-400 font-bold">${open ? '▲' : '▼'}</span>
+          <button onclick="rh.toggleDraft('${e.id}')" class="w-8 h-8 rounded-lg text-xs font-bold transition ${inDraft ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}" title="${inDraft ? 'Remove from workout' : 'Add to workout'}">
+            <i class="fa-solid ${inDraft ? 'fa-check' : 'fa-plus'}"></i></button></div>
+        ${open ? `<div class="px-3 pb-3 pt-2 border-t border-slate-800 space-y-2">
+          ${e.desc ? `<p class="text-[11px] text-slate-300 whitespace-pre-line">${esc(e.desc)}</p>` : `<p class="text-[11px] text-slate-500 italic">No description yet — tap Edit to add one.</p>`}
+          ${e.img ? `<img src="${esc(e.img)}" alt="${esc(e.name)}" class="rounded-lg max-h-56 w-full object-cover border border-slate-800">` : ''}
+          ${e.video ? `<a href="${esc(e.video)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300 hover:text-emerald-200"><i class="fa-solid fa-circle-play"></i> How-to video</a>` : ''}
+          <div class="flex flex-wrap gap-1">${chips}</div>
+          <div class="flex gap-1.5 pt-1">
+            <button onclick="rh.editEx('${e.id}')" class="${BTN}"><i class="fa-solid fa-pen"></i> Edit</button>
+            <button onclick="rh.delEx('${e.id}')" class="${BTN} !text-rose-300 !border-rose-500/30"><i class="fa-solid fa-trash"></i> Delete</button></div></div>` : ''}</div>`;
     }).join('');
     $('rhPicker').innerHTML = html;
   };
@@ -408,17 +453,31 @@ feet|Plantar Fascia Ball Roll|1|60|s|0`;
   const rh = window.rh = {
     pick(g) { S.group = g; S.ui.editing = undefined; renderCharacterView(); renderLegend(); renderPicker();
       $('rhPickerCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },
-    newEx() { S.ui.editing = null; renderPicker(); },
-    editEx(id) { S.ui.editing = id; renderPicker(); },
+    newEx() { S.ui.editing = null; S.ui.formImg = ''; renderPicker(); },
+    editEx(id) { S.ui.editing = id; S.ui.formImg = (S.exercises.find(e => e.id === id) || {}).img || ''; renderPicker(); },
     cancelEx() { S.ui.editing = undefined; renderPicker(); },
+    toggleEx(id) { S.ui.openEx[id] = !S.ui.openEx[id]; renderPicker(); },
+    pickImage(input) {
+      const f = input.files && input.files[0]; if (!f) return;
+      readImage(f).then(url => { S.ui.formImg = url; $('rhF_prev').innerHTML = prevHTML(); })
+        .catch(() => toast('Could not read that image'));
+    },
+    clearImage() { S.ui.formImg = ''; const p = $('rhF_prev'); if (p) p.innerHTML = ''; const f = $('rhF_file'); if (f) f.value = ''; },
     saveEx() {
       const name = $('rhF_name').value.trim();
       if (!name) return toast('Give the exercise a name');
-      const v = { name, sets: num($('rhF_sets').value, 1, 2), reps: num($('rhF_reps').value, 1, 10),
-        unit: $('rhF_unit').value, rest: num($('rhF_rest').value, 0, 30) };
-      if (S.ui.editing) Object.assign(S.exercises.find(e => e.id === S.ui.editing) || {}, v);
-      else S.exercises.push(Object.assign({ id: uid(), group: S.group }, v));
-      S.ui.editing = undefined; saveEx(); renderPicker(); toast('Exercise saved');
+      const rawVideo = $('rhF_video').value.trim(), video = cleanUrl(rawVideo);
+      if (rawVideo && !video) return toast("That video link doesn't look valid");
+      const cur = S.ui.editing ? S.exercises.find(e => e.id === S.ui.editing) : null;
+      const prim = cur ? cur.group : S.group;
+      const also = [...document.querySelectorAll('.rhF_grp:checked')].map(c => c.value).filter(g => g !== prim);
+      const v = { name, sets: num($('rhF_sets').value, 1, 2), reps: num($('rhF_reps').value, 1, 10), unit: $('rhF_unit').value,
+        rest: num($('rhF_rest').value, 0, 30), also, desc: $('rhF_desc').value.trim(), video, img: S.ui.formImg || '' };
+      let id;
+      if (cur) { Object.assign(cur, v); id = cur.id; }
+      else { id = uid(); S.exercises.push(Object.assign({ id, group: S.group }, v)); }
+      S.ui.editing = undefined; S.ui.formImg = '';
+      saveEx(); renderPicker(); toast('Exercise saved');
     },
     delEx(id) {
       if (!confirm('Delete this exercise from the suggestions? (Saved routines keep their copy.)')) return;

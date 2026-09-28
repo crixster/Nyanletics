@@ -14,6 +14,9 @@ let foodLogs = {}; // Format: 'YYYY-MM-DD': [{ id, name, cal, p, c, f, portion, 
 let favourites = [];
 let editingFavouriteId = null;
 let geminiApiKey = '';
+  let GEMINI_PREFERRED_MODEL = 'gemini-3.8-flash';
+  let GEMINI_FALLBACK_MODELS = ['gemini-flash-latest', 'gemini-2.5-flash'];
+  let cachedWorkingGeminiModel = null;
 
     function loadSettings() {
       const savedGoals = localStorage.getItem('apex_macro_goals');
@@ -45,32 +48,38 @@ let geminiApiKey = '';
       localStorage.setItem('apex_favourites', JSON.stringify(favourites));
     }
 
-    function saveSettings() {
+  function saveSettings() {
+    const key = document.getElementById('gemini-key-input').value.trim();
+    geminiApiKey = key;
+    localStorage.setItem('apex_gemini_key', geminiApiKey);
+
+    // Only touch macro targets when that section is visible (opened from the Macro tab)
+    const macroOpen = !document.getElementById('macro-goals-section').classList.contains('hidden');
+    if (macroOpen) {
       const cal = parseInt(document.getElementById('goal-cal-input').value) || 2000;
       const p = parseInt(document.getElementById('goal-p-input').value) || 150;
       const c = parseInt(document.getElementById('goal-c-input').value) || 200;
       const f = parseInt(document.getElementById('goal-f-input').value) || 65;
-      const key = document.getElementById('gemini-key-input').value.trim();
-
       goals = { cal, p, c, f };
-      geminiApiKey = key;
-
       localStorage.setItem('apex_macro_goals', JSON.stringify(goals));
-      localStorage.setItem('apex_gemini_key', geminiApiKey);
-
-      closeSettings();
-      renderDay();
-      showToast('Settings saved');
     }
 
-    function openSettings() {
-      document.getElementById('goal-cal-input').value = goals.cal;
-      document.getElementById('goal-p-input').value = goals.p;
-      document.getElementById('goal-c-input').value = goals.c;
-      document.getElementById('goal-f-input').value = goals.f;
-      document.getElementById('gemini-key-input').value = geminiApiKey;
-      document.getElementById('settings-modal').classList.remove('hidden');
-    }
+    closeSettings();
+    if (macroOpen) renderDay();
+    showToast('Settings saved');
+  }
+
+   function openSettings(context) {
+    const macro = context !== 'running';
+    document.getElementById('macro-goals-section').classList.toggle('hidden', !macro);
+    document.getElementById('settings-title').textContent = macro ? 'Settings' : 'Gemini Settings';
+    document.getElementById('goal-cal-input').value = goals.cal;
+    document.getElementById('goal-p-input').value = goals.p;
+    document.getElementById('goal-c-input').value = goals.c;
+    document.getElementById('goal-f-input').value = goals.f;
+    document.getElementById('gemini-key-input').value = geminiApiKey;
+    document.getElementById('settings-modal').classList.remove('hidden');
+  }
 
     function closeSettings() {
       document.getElementById('settings-modal').classList.add('hidden');
