@@ -9,7 +9,7 @@
 // background update, and network-first for everything else (e.g. the Gemini API calls),
 // falling back to cache only if a previously-cached copy exists.
 
-const CACHE_NAME = 'apex-fitness-cache-v1';
+const CACHE_NAME = 'nyanletics-cache-v1';
 
 // Keep this list to same-origin files that always exist for the app to boot.
 const APP_SHELL = [
@@ -21,10 +21,11 @@ const APP_SHELL = [
   './macro-tracker.js',
   './theme.css',
   './plate-loader.css',
+  './rehab.js',
+  './rehab.css',
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  './apple-touch-icon.png'
+  './icon.jpg',
+  './page-icon.png'
 ];
 
 self.addEventListener('install', (event) => {

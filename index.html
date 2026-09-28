@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="plate-loader.css">
+  <link rel="stylesheet" href="rehab.css">
 </head>
 <body class="min-h-screen pb-12">
 
@@ -32,7 +33,7 @@
     <img src="page-icon.png" alt="Cat Icon" class="w-8 h-8 rounded-full object-cover border border-cyan-400/50 shadow-md">
     Nyanletics Hybrid Training
   </h1>
-  <p class="text-xs sm:text-sm text-slate-400 mt-1">Smart barbell loading calculator, workout log, macro tracker & rehab recovery</p>
+  <p class="text-xs sm:text-sm text-slate-400 mt-1">Complete fitness solution for hybrid training</p>
       <!-- Install App Banner (Android/Chrome shows a real install button; iOS shows Add-to-Home-Screen instructions) -->
       <div id="pwaInstallContainer" class="hidden mt-3 flex flex-col items-center gap-2">
         <button id="pwaInstallBtn" onclick="triggerPwaInstall()" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition items-center gap-2">
@@ -45,7 +46,7 @@
     </header>
 
     <!-- Navigation Tabs -->
-    <div class="flex bg-slate-800/80 p-1 rounded-xl mb-6 border border-slate-700/50">
+    <div class="flex bg-slate-800/80 p-1 rounded-xl mb-6 border border-slate-700/50 overflow-x-auto hide-scrollbar">
       <button id="tabBtnLog" onclick="switchTab('log')" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/20">
         <i class="fa-solid fa-clipboard-list mr-1.5"></i>Lifting Log
       </button>
@@ -55,6 +56,13 @@
       <button id="tabBtnMacros" onclick="switchTab('macros')" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-300 hover:text-white">
         <i class="fa-solid fa-utensils mr-1.5"></i>Macro Tracker
       </button>
+
+<button id="tabBtnRehab" onclick="switchTab('rehab')" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-300 hover:text-white">
+  <i class="fa-solid fa-heart-pulse mr-1.5"></i>Rehab & Recovery
+</button>
+
+
+
     </div>
 
     <!-- MAIN CONTENT PANE -->
@@ -487,8 +495,9 @@
             <!-- Dynamic list items injected here -->
           </div>
         </section>
-
       </div>
+<div id="rehabTab" class="hidden space-y-5"></div>
+
     </main>
   </div>
 
@@ -750,6 +759,7 @@
 <script src="lifting-log.js"></script>
 <script src="plate-loader.js"></script>
 <script src="macro-tracker.js"></script>
+<script src="rehab.js"></script>
 </body>
 </html>
 

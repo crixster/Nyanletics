@@ -1,0 +1,28 @@
+/* =====================================================================
+   rehab.css — Nyanletics: Rehab & Recovery tab only
+   Uses theme.css tokens (.glass-card etc.). Nothing here overrides them.
+   ===================================================================== */
+
+/* hide scrollbar (tab bar + legend). Also exists in styles.css, but
+   index.html only loads theme.css, so it is repeated here on purpose. */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Muscle regions on the body map (fill colour is set inline per group) */
+.rh-region {
+  cursor: pointer;
+  fill-opacity: 0.5;
+  stroke: #0f172a;
+  stroke-width: 1.2;
+  transition: fill-opacity 0.15s ease, filter 0.15s ease;
+}
+.rh-region:hover { fill-opacity: 0.85; }
+.rh-region.active {
+  fill-opacity: 1;
+  stroke: #ffffff;
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 4px rgba(129, 140, 248, 0.85));
+}
+
+.rh-chip { touch-action: manipulation; }
+.rh-body-svg { max-height: 400px; }
