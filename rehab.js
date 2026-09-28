@@ -10,14 +10,17 @@
 (function () {
   'use strict';
 
-  // ---------- Muscle groups: id, label, hue ----------
+// ---------- Muscle groups & Joint groups: id, label, hue ----------
   const GROUPS = [
     ['neck', 'Neck', 200], ['traps', 'Traps', 265], ['shoulders', 'Shoulders', 35],
-    ['chest', 'Chest', 0], ['biceps', 'Biceps', 48], ['triceps', 'Triceps', 28],
-    ['forearms', 'Forearms', 170], ['abs', 'Abs', 140], ['obliques', 'Obliques', 185],
-    ['lats', 'Lats', 120], ['lowback', 'Lower Back', 290], ['glutes', 'Glutes', 320],
-    ['hips', 'Hips', 80], ['quads', 'Quads', 10], ['hamstrings', 'Hamstrings', 345],
-    ['calves', 'Calves', 215], ['shins', 'Shins', 95], ['feet', 'Feet & Ankles', 240]
+    ['shoulder_joints', 'Shoulders (Joint)', 300], ['chest', 'Chest', 0], 
+    ['biceps', 'Biceps', 48], ['triceps', 'Triceps', 28], ['elbows', 'Elbows (Joint)', 160], 
+    ['forearms', 'Forearms', 170], ['wrists', 'Wrists (Joint)', 220],
+    ['abs', 'Abs', 140], ['obliques', 'Obliques', 185], ['lats', 'Lats', 120],
+    ['lowback', 'Lower Back', 290], ['glutes', 'Glutes', 320], ['hips', 'Hips', 80],
+    ['hip_joints', 'Hips (Joint)', 105], ['quads', 'Quads', 10], ['hamstrings', 'Hamstrings', 345],
+    ['knees', 'Knees (Joint)', 150], ['calves', 'Calves', 215], ['shins', 'Shins', 95],
+    ['ankles', 'Ankles (Joint)', 250], ['feet', 'Feet', 240]
   ];
   const LABEL = {}, HUE = {};
   GROUPS.forEach(g => { LABEL[g[0]] = g[1]; HUE[g[0]] = g[2]; });
@@ -105,7 +108,19 @@ shins|Toe Walks|2|30|s|20
 shins|Kneeling Shin Stretch|2|30|s|10
 feet|Ankle Circles|2|15|r|10
 feet|Towel Scrunches|3|15|r|20
-feet|Plantar Fascia Ball Roll|1|60|s|0`;
+feet|Plantar Fascia Ball Roll|1|60|s|0
+shoulder_joints|Shoulder CARs (Controlled Rotations)|3|5|r|20
+shoulder_joints|Pendulum Swings|2|30|s|10
+elbows|Elbow CARs|2|10|r|15
+elbows|Forearm Pronation / Supination|3|12|r|20
+wrists|Wrist CARs|2|10|r|10
+wrists|Prayer Stretch|2|30|s|15
+hip_joints|Hip CARs|3|5|r|20
+hip_joints|90/90 Hip Rotations|2|8|r|20
+knees|Tibial Rotations|2|10|r|15
+knees|Terminal Knee Extensions|3|12|r|20
+ankles|Ankle CARs / Alphabet|2|10|r|15
+ankles|Banded Ankle Distraction|2|30|s|20`;
   const defaultExercises = () => DEFAULTS.trim().split('\n').map(l => {
     const p = l.split('|');
     return { id: uid(), group: p[0], name: p[1], sets: +p[2], reps: +p[3], unit: p[4], rest: +p[5], also: [], desc: '', video: '', img: '' };
@@ -233,36 +248,99 @@ feet|Plantar Fascia Ball Roll|1|60|s|0`;
   }
   window.initRehabUI = function () { if (ensure()) renderAll(); };
 
-  // ---------- Body map ----------
+// ---------- Body map ----------
   window.renderCharacterView = function () {
     if (!ensure()) return;
+
+    // Joint button coordinates relative to figure center
+    const JOINTS = [
+      ['shoulder_joints', 28, 68],
+      ['elbows', 39, 135],
+      ['wrists', 45, 184],
+      ['hip_joints', 18, 170],
+      ['knees', 18, 269],
+      ['ankles', 16, 349]
+    ];
+
     const fig = (cx, view) => {
+      // Pixel Art Cute Cat Head
+      const catHead = view === 'f' ? `
+        <g class="pixel-cat-head" shape-rendering="crispEdges">
+          <path d="M-16 12 L-16 2 L-10 2 L-10 6 L-6 10 L-6 12 Z" fill="#334155" />
+          <path d="M-14 10 L-14 4 L-10 4 L-10 8 Z" fill="#f472b6" />
+          <path d="M16 12 L16 2 L10 2 L10 6 L6 10 L6 12 Z" fill="#334155" />
+          <path d="M14 10 L14 4 L10 4 L10 8 Z" fill="#f472b6" />
+          <rect x="-18" y="10" width="36" height="26" rx="3" fill="#f1f5f9" stroke="#0f172a" stroke-width="2" />
+          <rect x="-10" y="18" width="5" height="7" fill="#0f172a" rx="1" />
+          <rect x="-10" y="18" width="2" height="3" fill="#ffffff" />
+          <rect x="5" y="18" width="5" height="7" fill="#0f172a" rx="1" />
+          <rect x="5" y="18" width="2" height="3" fill="#ffffff" />
+          <rect x="-14" y="24" width="4" height="2" fill="#f472b6" opacity="0.8" />
+          <rect x="10" y="24" width="4" height="2" fill="#f472b6" opacity="0.8" />
+          <rect x="-1" y="24" width="2" height="2" fill="#f472b6" />
+          <path d="M-4 27 Q-2 29 0 27 Q2 29 4 27" stroke="#0f172a" stroke-width="1.5" fill="none" stroke-linecap="round" />
+          <path d="M-17 21 L-23 19 M-17 25 L-23 26" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" />
+          <path d="M17 21 L23 19 M17 25 L23 26" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" />
+        </g>
+      ` : `
+        <g class="pixel-cat-head" shape-rendering="crispEdges">
+          <path d="M-16 12 L-16 2 L-10 2 L-10 6 L-6 10 L-6 12 Z" fill="#1e293b" />
+          <path d="M16 12 L16 2 L10 2 L10 6 L6 10 L6 12 Z" fill="#1e293b" />
+          <rect x="-18" y="10" width="36" height="26" rx="3" fill="#cbd5e1" stroke="#0f172a" stroke-width="2" />
+          <rect x="-4" y="12" width="8" height="6" fill="#818cf8" />
+          <rect x="-10" y="18" width="5" height="4" fill="#818cf8" />
+          <rect x="5" y="18" width="5" height="4" fill="#818cf8" />
+        </g>
+      `;
+
       let o = `<g transform="translate(${cx},8)">
-        <ellipse cx="0" cy="22" rx="16" ry="20" fill="#1e293b" stroke="#475569"/>
+        ${catHead}
         <ellipse cx="-50" cy="194" rx="6" ry="9" fill="#1e293b" stroke="#475569"/>
         <ellipse cx="50" cy="194" rx="6" ry="9" fill="#1e293b" stroke="#475569"/>`;
+
+      // Muscle Regions
       Z.forEach(g => {
         const p = SH[g] && SH[g][view]; if (!p) return;
         const one = m => `<path class="rh-region${S.group === g ? ' active' : ''}" data-g="${g}" fill="${color(g)}" d="${p}"${m ? ' transform="scale(-1,1)"' : ''}><title>${LABEL[g]}</title></path>`;
         o += one(false) + (CENTRAL.has(g) ? '' : one(true));
       });
+
       if (view === 'f') o += `<path d="M-10 122L10 122M-10 142L10 142M0 102L0 166" stroke="#0f172a" stroke-opacity=".55" stroke-width="1" fill="none" pointer-events="none"/>`;
+
+      // Interactive Joint Buttons (Shoulders, Elbows, Wrists, Hips, Knees, Ankles)
+      JOINTS.forEach(([gid, jx, jy]) => {
+        const activeClass = S.group === gid ? ' active' : '';
+        o += `<circle class="rh-region rh-joint${activeClass}" data-g="${gid}" cx="${-jx}" cy="${jy}" r="6.5" fill="${color(gid)}" stroke="#ffffff" stroke-width="1.5"><title>${LABEL[gid]}</title></circle>`;
+        o += `<circle class="rh-region rh-joint${activeClass}" data-g="${gid}" cx="${jx}" cy="${jy}" r="6.5" fill="${color(gid)}" stroke="#ffffff" stroke-width="1.5"><title>${LABEL[gid]}</title></circle>`;
+      });
+
       return o + '</g>';
     };
-    $('rhBody').innerHTML = `<svg viewBox="0 0 410 404" class="rh-body-svg w-full" role="img" aria-label="Muscle map, front and back">
-      ${fig(105, 'f')}${fig(305, 'b')}
-      <text x="105" y="400" text-anchor="middle" fill="#94a3b8" font-size="10">Front</text>
-      <text x="305" y="400" text-anchor="middle" fill="#94a3b8" font-size="10">Back</text></svg>`;
-    $('rhSelected').textContent = LABEL[S.group];
-  };
 
-  window.renderLegend = function () {
-    if (!ensure()) return;
-    $('rhLegend').innerHTML = GROUPS.map(g => {
-      const on = g[0] === S.group;
-      return `<button onclick="rh.pick('${g[0]}')" class="rh-chip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white'}">
-        <span class="w-2 h-2 rounded-full" style="background:${color(g[0])}"></span>${g[1]}</button>`;
-    }).join('');
+    $('rhBody').innerHTML = `<svg viewBox="0 0 410 404" class="rh-body-svg w-full" role="img" aria-label="Muscle map, front and back">
+      <defs>
+        <pattern id="pixelGrid" width="16" height="16" patternUnits="userSpaceOnUse">
+          <path d="M 16 0 L 0 0 0 16" fill="none" stroke="#334155" stroke-width="1" opacity="0.25"/>
+        </pattern>
+      </defs>
+      
+      <!-- Retro Background (Bars/Pedestals Removed) -->
+      <g class="pixel-art-bg" shape-rendering="crispEdges">
+        <rect width="410" height="390" rx="12" fill="#090d16" />
+        <rect width="410" height="390" rx="12" fill="url(#pixelGrid)" />
+        
+        <!-- Floating Pixel Stars -->
+        <path d="M 35 35 h 4 v -4 h -4 v -4 h -4 v 4 h -4 v 4 h 4 v 4 h 4 Z" fill="#38bdf8" opacity="0.8"/>
+        <path d="M 205 22 h 4 v -4 h -4 v -4 h -4 v 4 h -4 v 4 h 4 v 4 h 4 Z" fill="#f472b6" opacity="0.8"/>
+        <path d="M 375 42 h 3 v -3 h -3 v -3 h -3 v 3 h -3 v 3 h 3 v 3 h 3 Z" fill="#818cf8" opacity="0.7"/>
+        <path d="M 195 340 h 3 v -3 h -3 v -3 h -3 v 3 h -3 v 3 h 3 v 3 h 3 Z" fill="#38bdf8" opacity="0.6"/>
+      </g>
+
+      ${fig(105, 'f')}${fig(305, 'b')}
+      <text x="105" y="398" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold">FRONT</text>
+      <text x="305" y="398" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold">BACK</text>
+    </svg>`;
+    $('rhSelected').textContent = LABEL[S.group];
   };
 
   // ---------- Suggested exercise list ----------
@@ -299,7 +377,7 @@ feet|Plantar Fascia Ball Roll|1|60|s|0`;
           <option value="r"${v.unit === 'r' ? ' selected' : ''}>Reps</option><option value="s"${v.unit === 's' ? ' selected' : ''}>Hold (s)</option></select></div>
         <div><label class="${LBL}">Rest (s)</label><input id="rhF_rest" type="number" min="0" step="5" value="${v.rest}" class="${INP}"></div>
       </div>
-      <div><label class="${LBL}">Also works these muscle groups (tick to show it under them too)</label>
+      <div><label class="${LBL}">Also works these muscle & joints (tick to show it under them too)</label>
         <div class="flex flex-wrap gap-1.5">${GROUPS.map(g => {
           const lock = g[0] === prim;
           return `<label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] ${lock ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-200' : 'bg-slate-800 border-slate-700 text-slate-300'} cursor-pointer select-none">
