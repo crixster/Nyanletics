@@ -51,6 +51,52 @@
 
   const $ = id => document.getElementById(id);
 
+    // ---------- Landscape mode: native lock, else CSS "fake rotate" ----------
+  let nativeLandscape = false;
+  const isLandscapeMode = () =>
+    nativeLandscape || document.body.classList.contains('timer-forced');
+
+  async function enterLandscape() {
+    const so = screen.orientation;
+    if (so && typeof so.lock === 'function') {
+      try {
+        await so.lock('landscape');
+        nativeLandscape = true;
+      } catch (e) {
+        try {
+          await document.documentElement.requestFullscreen();
+          await so.lock('landscape');
+          nativeLandscape = true;
+        } catch (e2) {
+          if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        }
+      }
+    }
+    // Native lock refused (or unsupported, e.g. iOS): rotate with CSS instead.
+    if (!nativeLandscape && window.matchMedia('(orientation: portrait)').matches) {
+      document.body.classList.add('timer-forced');
+    }
+    renderTimerUI();
+  }
+
+  function exitLandscape() {
+    if (nativeLandscape) {
+      try { screen.orientation.unlock(); } catch (e) {}
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      nativeLandscape = false;
+    }
+    document.body.classList.remove('timer-forced');
+    renderTimerUI();
+  }
+
+  function toggleLandscape() {
+    if (isLandscapeMode()) exitLandscape(); else enterLandscape();
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && nativeLandscape) exitLandscape();
+  });
+
   // Web Audio Synthesizer for Beeps
   function playBeep(freq = 800, duration = 0.12) {
     if (isMuted) return;
@@ -168,7 +214,12 @@
               <span>TIMER ACTIVE — Controls Locked until Reset</span>
             </div>
           `}
+          <button onclick="window.nyanTimer.toggleLandscape()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 flex-shrink-0" title="Rotate timer to landscape">
+            <i class="fa-solid ${isLandscapeMode() ? 'fa-compress text-amber-400' : 'fa-rotate text-indigo-400'}"></i>
+            <span>${isLandscapeMode() ? 'Exit' : 'Rotate'}</span>
+          </button>
 
+          <button onclick="window.nyanTimer.toggleMute()" ...   <!-- existing mute button -->
           <button onclick="window.nyanTimer.toggleMute()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 flex-shrink-0" title="Toggle Sound Cues">
             <i class="fa-solid ${isMuted ? 'fa-volume-xmark text-rose-400' : 'fa-volume-high text-emerald-400'}"></i>
             <span class="hidden sm:inline">${isMuted ? 'Muted' : 'Sound On'}</span>
@@ -452,6 +503,7 @@
   window.nyanTimer = {
     setMode: setTimerMode,
     toggleMute: toggleMute,
+    toggleLandscape: toggleLandscape,
 
     confirmReset(type) {
       if (confirm('Are you sure you want to reset the timer?')) {

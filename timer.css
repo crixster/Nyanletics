@@ -23,4 +23,41 @@
   body.timer-active #timerTab .max-h-\[380px\] {
     max-height: 45vh;
   }
+
+/* Forced landscape ("fake rotate"): used when the phone/app won't rotate itself.
+   Turns the timer into a full-screen overlay rotated 90 degrees. */
+body.timer-active.timer-forced {
+  overflow: hidden;
+}
+
+body.timer-active.timer-forced #timerTab {
+  position: fixed;
+  top: 0;
+  left: 100vw;
+  left: 100dvw;
+  width: 100vh;
+  width: 100dvh;
+  height: 100vw;
+  height: 100dvw;
+  transform: rotate(90deg);
+  transform-origin: top left;
+  z-index: 60;
+  overflow-y: auto;
+  padding: 0.75rem 1.5rem;
+  background: #0f172a;
+}
+
+/* Sizes are based on vw here, because the rotated box's height is the screen's width */
+body.timer-active.timer-forced #timerTab .font-black.font-mono {
+  font-size: clamp(4rem, 34vw, 9rem);
+  line-height: 1;
+}
+
+body.timer-active.timer-forced #timerTab .max-h-\[380px\] {
+  max-height: 40vw;
+}
+
+
+
+
 }

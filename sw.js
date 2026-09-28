@@ -1,4 +1,4 @@
-// Apex Fitness Tracker — Service Worker
+// Nyanletics Hybrid Fitness Training App — Service Worker
 //
 // This file is registered by core.js via navigator.serviceWorker.register('sw.js').
 // A working service worker with a fetch handler is what lets Chrome on Android treat
@@ -9,7 +9,7 @@
 // background update, and network-first for everything else (e.g. the Gemini API calls),
 // falling back to cache only if a previously-cached copy exists.
 
-const CACHE_NAME = 'nyanletics-cache-v6';
+const CACHE_NAME = 'nyanletics-cache-v7';
 
 // Keep this list to same-origin files that always exist for the app to boot.
 const APP_SHELL = [
