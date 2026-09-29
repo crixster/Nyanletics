@@ -654,7 +654,7 @@ function toggleMute() {
         cd.timerId = setInterval(() => {
           cd.remaining--;
           if (cd.remaining <= 10 && cd.remaining > 0) {
-            playBeep(cd.remaining <= 3 ? 900 : 750, 0.1);
+            playBeep(cd.remaining <= 5 ? 900 : 750, 0.1);
           }
           if (cd.remaining <= 0) {
             playBeep(1300, 0.5);
@@ -791,7 +791,7 @@ function toggleMute() {
           it.remaining--;
 
           if (it.remaining <= 10 && it.remaining > 0) {
-            playBeep(it.remaining <= 3 ? 900 : 750, 0.1);
+            playBeep(it.remaining <= 5 ? 900 : 750, 0.1);
           }
 
           if (it.remaining <= 0) {
