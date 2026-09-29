@@ -224,7 +224,7 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
   }
 
   // ---------- init ----------
-function ensure() {
+  function ensure() {
     const root = $('rehabTab');
     if (!root || S.ready) return !!root;
 
@@ -274,19 +274,17 @@ function ensure() {
       const t = e.target.closest('[data-g]');
       if (t) rh.pick(t.dataset.g);
     });
-    $('rhName').value = S.draft.name || '';
-    $('rhBudget').value = S.draft.budget;
+    $('rhName').value = S.draft.name || '';$('rhBudget').value = S.draft.budget;
     S.ready = true;
     return true;
   }
 
-
   function renderAll() {
-    renderCharacterView(); renderLegend(); renderPicker(); renderWorkout(); renderSchedule();
+    renderCharacterView(); renderLegend(); renderPicker(); renderWorkout(); renderRoutines(); renderSchedule();
   }
   window.initRehabUI = function () { if (ensure()) renderAll(); };
 
-// ---------- Body map ----------
+  // ---------- Body map ----------
   window.renderCharacterView = function () {
     if (!ensure()) return;
 
@@ -346,8 +344,8 @@ function ensure() {
 
       // Interactive Joint Buttons (Shoulders, Elbows, Wrists, Hips, Knees, Ankles)
       JOINTS.forEach(([gid, jx, jy, only]) => {
-  if (only && only !== view) return;
-  const activeClass = S.group === gid ? ' active' : '';
+        if (only && only !== view) return;
+        const activeClass = S.group === gid ? ' active' : '';
         o += `<circle class="rh-region rh-joint${activeClass}" data-g="${gid}" cx="${-jx}" cy="${jy}" r="6.5" fill="${color(gid)}" stroke="#ffffff" stroke-width="1.5"><title>${LABEL[gid]}</title></circle>`;
         o += `<circle class="rh-region rh-joint${activeClass}" data-g="${gid}" cx="${jx}" cy="${jy}" r="6.5" fill="${color(gid)}" stroke="#ffffff" stroke-width="1.5"><title>${LABEL[gid]}</title></circle>`;
       });
@@ -362,7 +360,7 @@ function ensure() {
         </pattern>
       </defs>
       
-      <!-- Retro Background (Bars/Pedestals Removed) -->
+      <!-- Retro Background -->
       <g class="pixel-art-bg" shape-rendering="crispEdges">
         <rect width="410" height="390" rx="12" fill="#090d16" />
         <rect width="410" height="390" rx="12" fill="url(#pixelGrid)" />
@@ -393,7 +391,6 @@ function ensure() {
     }).join('');
   };
 
-
   // ---------- Suggested exercise list ----------
   // An exercise lives under its primary group (e.group) and is also shown under every group in e.also.
   const belongs = (e, g) => e.group === g || (e.also || []).includes(g);
@@ -402,19 +399,58 @@ function ensure() {
     if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
     try { return new URL(u).href; } catch (e) { return ''; }
   };
+
   // Resize photos to max 640px JPEG so they fit comfortably in localStorage
   const readImage = file => new Promise((res, rej) => {
     const fr = new FileReader(); fr.onerror = rej;
-    fr.onload = () => { const im = new Image(); im.onerror = rej;
-      im.onload = () => { const k = Math.min(1, 640 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+    fr.onload = () => {
+      const im = new Image(); im.onerror = rej;
+      im.onload = () => {
+        const k = Math.min(1, 640 / Math.max(im.width, im.height)), c = document.createElement('canvas');
         c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
-        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.75)); };
-      im.src = fr.result; };
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.75));
+      };
+      im.src = fr.result;
+    };
     fr.readAsDataURL(file);
   });
+
   const prevHTML = () => S.ui.formImg
-    ? `<div class="relative inline-block mt-2"><img src="${esc(S.ui.formImg)}" class="h-24 rounded-lg border border-slate-700 object-cover">
+    ? `<div class="relative inline-block mt-2"><img src="${esc(S.ui.formImg)}" onclick="rh.viewImg()" class="h-24 max-w-full rounded-lg border border-slate-700 object-contain cursor-zoom-in">
         <button type="button" onclick="rh.clearImage()" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px]"><i class="fa-solid fa-xmark"></i></button></div>` : '';
+
+  // ---------- Fullscreen photo viewer (tap anywhere / press Esc to close) ----------
+  function onViewerKey(e) { if (e.key === 'Escape') closeViewer(); }
+  function closeViewer() {
+    const v = $('rhViewer');
+    if (v) v.remove();
+    document.removeEventListener('keydown', onViewerKey);
+    document.body.style.overflow = '';
+  }
+  function openViewer(src, alt) {
+    if (!src) return;
+    closeViewer();
+    const v = document.createElement('div');
+    v.id = 'rhViewer';
+    v.setAttribute('role', 'dialog');
+    v.setAttribute('aria-modal', 'true');
+    v.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(2,6,23,.96);display:flex;align-items:center;justify-content:center;padding:8px;cursor:zoom-out;';
+    const im = document.createElement('img');
+    im.src = src;
+    im.alt = alt || 'Exercise photo';
+    im.style.cssText = 'width:100%;height:100%;object-fit:contain;';
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '\u2715';
+    x.setAttribute('aria-label', 'Close');
+    x.style.cssText = 'position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:36px;height:36px;border-radius:9999px;background:rgba(30,41,59,.9);color:#fff;font-size:16px;border:1px solid #475569;';
+    v.appendChild(im);
+    v.appendChild(x);
+    v.addEventListener('click', closeViewer);
+    document.addEventListener('keydown', onViewerKey);
+    document.body.style.overflow = 'hidden';
+    document.body.appendChild(v);
+  }
 
   function formHTML(e) {
     const v = Object.assign({ name: '', sets: 2, reps: 10, unit: 'r', rest: 30, also: [], desc: '', video: '' }, e);
@@ -432,261 +468,430 @@ function ensure() {
         <div class="flex flex-wrap gap-1.5">${GROUPS.map(g => {
           const lock = g[0] === prim;
           return `<label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] ${lock ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-200' : 'bg-slate-800 border-slate-700 text-slate-300'} cursor-pointer select-none">
-            <input type="checkbox" class="rhF_grp" value="${g[0]}" ${lock || v.also.includes(g[0]) ? 'checked' : ''} ${lock ? 'disabled' : ''}>${g[1]}${lock ? ' (main)' : ''}</label>`;
+            <input type="checkbox" class="rhF_grp" value="${g[0]}" ${lock || v.also.includes(g[0]) ? 'checked' : ''}${lock ? 'disabled' : ''}>${g[1]}${lock ? ' (main)' : ''}</label>`;
         }).join('')}</div></div>
       <div><label class="${LBL}">Description / how to do it</label>
-        <textarea id="rhF_desc" rows="3" class="${INP}" placeholder="Cues, range of motion, what to feel…">${esc(v.desc)}</textarea></div>
-      <div><label class="${LBL}">Video link (YouTube, etc.)</label>
-        <input id="rhF_video" type="url" inputmode="url" class="${INP}" placeholder="https://…" value="${esc(v.video)}"></div>
-      <div><label class="${LBL}">Photo</label>
-        <input id="rhF_file" type="file" accept="image/*" onchange="rh.pickImage(this)" class="text-[11px] text-slate-400 file:mr-2 file:px-2.5 file:py-1.5 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-300 file:text-xs">
-        <div id="rhF_prev">${prevHTML()}</div></div>
-      <div class="flex gap-2">
-        <button onclick="rh.saveEx()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 rounded-lg text-xs transition">Save</button>
-        <button onclick="rh.cancelEx()" class="${BTN}">Cancel</button></div></div>`;
+        <textarea id="rhF_desc" class="${INP} h-16" placeholder="Form cues, setup instructions, or notes...">${esc(v.desc || '')}</textarea></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="${LBL}">Video URL (YouTube or web)</label>
+          <input id="rhF_video" class="${INP}" placeholder="https://..." value="${esc(v.video || '')}"></div>
+        <div><label class="${LBL}">Reference Photo</label>
+          <input type="file" id="rhF_imgFile" accept="image/*" onchange="rh.handleImg(event)" class="${INP}">
+          <div id="rhF_imgPrev">${prevHTML()}</div></div>
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button onclick="rh.saveExForm('${v.id || ''}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-1.5 rounded-lg text-xs transition">Save Exercise</button>
+        <button onclick="rh.cancelExForm()" class="${BTN}">Cancel</button>
+      </div>
+    </div>`;
   }
 
   window.renderPicker = function () {
     if (!ensure()) return;
-    const list = S.exercises.filter(e => belongs(e, S.group));
-    $('rhPickerTitle').innerHTML = `<span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5" style="background:${color(S.group)}"></span>${LABEL[S.group]} — suggested exercises`;
-    let html = S.ui.editing === null ? formHTML({}) : '';
-    if (!list.length && S.ui.editing !== null) html += `<p class="text-xs text-slate-500 italic">No exercises here yet — tap Custom to add one.</p>`;
-    html += list.map(e => {
+    $('rhPickerTitle').textContent = `${LABEL[S.group]} Exercises`;
+    const items = S.exercises.filter(e => belongs(e, S.group));
+    const container = $('rhPicker');
+    if (!items.length && S.ui.editing !== 'new') {
+      container.innerHTML = `<p class="text-xs text-slate-400 italic">No exercises saved for ${LABEL[S.group]} yet. Tap ＋ Custom to add one.</p>`;
+      return;
+    }
+    container.innerHTML = items.map(e => {
       if (S.ui.editing === e.id) return formHTML(e);
-      const inDraft = S.draft.items.some(i => i.src === e.id), open = !!S.ui.openEx[e.id];
-      const chips = [e.group].concat(e.also || []).map(g => `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-800 text-[10px] text-slate-300"><span class="w-1.5 h-1.5 rounded-full" style="background:${color(g)}"></span>${LABEL[g] || g}</span>`).join(' ');
-      return `<div class="bg-slate-900/70 border border-slate-800 rounded-xl">
-        <div class="flex items-center gap-2 px-3 py-2">
-          <button onclick="rh.toggleEx('${e.id}')" class="flex-1 min-w-0 text-left">
-            <div class="text-xs font-bold text-slate-100 truncate">${esc(e.name)}</div>
-            <div class="text-[11px] text-slate-400">${dose(e)} · rest ${e.rest}s · ≈ ${fmtMin(exSecs(e))}</div></button>
-          <span class="text-[11px] text-indigo-400 font-bold">${open ? '▲' : '▼'}</span>
-          <button onclick="rh.toggleDraft('${e.id}')" class="w-8 h-8 rounded-lg text-xs font-bold transition ${inDraft ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}" title="${inDraft ? 'Remove from workout' : 'Add to workout'}">
-            <i class="fa-solid ${inDraft ? 'fa-check' : 'fa-plus'}"></i></button></div>
-        ${open ? `<div class="px-3 pb-3 pt-2 border-t border-slate-800 space-y-2">
-          ${e.desc ? `<p class="text-[11px] text-slate-300 whitespace-pre-line">${esc(e.desc)}</p>` : `<p class="text-[11px] text-slate-500 italic">No description yet — tap Edit to add one.</p>`}
-          ${e.img ? `<img src="${esc(e.img)}" alt="${esc(e.name)}" class="rounded-lg max-h-56 w-full object-cover border border-slate-800">` : ''}
-          ${e.video ? `<a href="${esc(e.video)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300 hover:text-emerald-200"><i class="fa-solid fa-circle-play"></i> How-to video</a>` : ''}
-          <div class="flex flex-wrap gap-1">${chips}</div>
-          <div class="flex gap-1.5 pt-1">
-            <button onclick="rh.editEx('${e.id}')" class="${BTN}"><i class="fa-solid fa-pen"></i> Edit</button>
-            <button onclick="rh.delEx('${e.id}')" class="${BTN} !text-rose-300 !border-rose-500/30"><i class="fa-solid fa-trash"></i> Delete</button></div></div>` : ''}</div>`;
-    }).join('');
-    $('rhPicker').innerHTML = html;
+      const isExpanded = S.ui.openEx[e.id];
+      const hasSecondary = Array.isArray(e.also) && e.also.length > 0;
+      return `<div class="bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-xl p-3 transition space-y-2">
+        <div class="flex items-center justify-between gap-2">
+          <div class="cursor-pointer flex-1" onclick="rh.toggleExDetails('${e.id}')">
+            <h4 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              ${esc(e.name)}
+              <i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}"></i>
+            </h4>
+            <div class="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
+              <span class="text-indigo-300 font-semibold">${dose(e)}</span>
+              <span>•</span>
+              <span>~${fmtMin(exSecs(e))}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <button onclick="rh.addEx('${e.id}')" class="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition" title="Add to workout">＋ Add</button>
+            <button onclick="rh.editEx('${e.id}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700 transition"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="rh.delEx('${e.id}')" class="px-2 py-1 bg-slate-800 hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 text-xs rounded-lg border border-slate-700 transition"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+        ${hasSecondary ? `<div class="flex flex-wrap gap-1">
+          ${e.also.map(g => `<span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] text-slate-400">${LABEL[g] || g}</span>`).join('')}
+        </div>` : ''}
+        ${isExpanded ? `<div class="pt-2 border-t border-slate-800/80 text-xs text-slate-300 space-y-2">
+          ${e.desc ? `<p class="whitespace-pre-wrap text-slate-400">${esc(e.desc)}</p>` : ''}
+          ${e.img ? `<div><img src="${esc(e.img)}" onclick="rh.viewImg('${e.id}')" class="max-h-48 max-w-full rounded-lg border border-slate-700 object-contain cursor-zoom-in"></div>` : ''}
+          ${e.video ? `<div><a href="${esc(cleanUrl(e.video))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:underline"><i class="fa-brands fa-youtube"></i> Watch video tutorial</a></div>` : ''}
+        </div>` : ''}
+      </div>`;
+    }).join('') + (S.ui.editing === 'new' ? formHTML() : '');
   };
 
-  // ---------- Custom workout builder ----------
-  function renderItems() {
-    const it = S.draft.items;
-    $('rhItems').innerHTML = it.length ? it.map((e, i) => `
-      <div class="bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${color(e.group)}"></span>
-          <div class="flex-1 min-w-0"><div class="text-xs font-bold text-slate-100 truncate">${esc(e.name)}</div>
-            <div class="text-[10px] text-slate-500">${LABEL[e.group] || ''} · ≈ ${fmtMin(exSecs(e))}</div></div>
-          <button onclick="rh.moveItem(${i},-1)" class="p-1 text-slate-500 hover:text-white"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>
-          <button onclick="rh.moveItem(${i},1)" class="p-1 text-slate-500 hover:text-white"><i class="fa-solid fa-chevron-down text-[10px]"></i></button>
-          <button onclick="rh.removeItem(${i})" class="p-1 text-slate-500 hover:text-rose-400"><i class="fa-solid fa-xmark text-xs"></i></button>
-        </div>
-        <div class="flex items-center gap-2 mt-2 text-[11px] text-slate-400">
-          <input type="number" min="1" value="${e.sets}" onchange="rh.itemSet(${i},'sets',this.value)" class="w-14 ${INP}"> sets ×
-          <input type="number" min="1" value="${e.reps}" onchange="rh.itemSet(${i},'reps',this.value)" class="w-14 ${INP}"> ${e.unit === 's' ? 'sec' : 'reps'}
-          · rest <input type="number" min="0" step="5" value="${e.rest}" onchange="rh.itemSet(${i},'rest',this.value)" class="w-14 ${INP}">s
-        </div></div>`).join('')
-      : `<p class="text-xs text-slate-500 italic text-center py-3">Pick a muscle above and tap ＋ on exercises to build your routine.</p>`;
-  }
-
-  function renderTotals() {
-    const t = sumSecs(S.draft.items), b = +S.draft.budget || 0, n = S.draft.items.length;
-    let msg = '', tone = 'emerald';
-    if (b > 0 && n) {
-      if (t > b * 60 + 3) { tone = 'rose'; msg = `${fmtMin(t - b * 60)} over budget — remove or shorten an exercise`; }
-      else msg = `${fmtMin(Math.max(0, b * 60 - t))} to spare`;
-    }
-    const pct = b > 0 ? Math.min(100, (t / (b * 60)) * 100) : 0;
-    $('rhTotals').innerHTML = `<div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3">
-      <div class="flex items-center justify-between"><span class="text-xs text-slate-400">${n} exercise${n === 1 ? '' : 's'}</span>
-        <span class="text-sm font-extrabold text-${tone}-400">Total ≈ ${fmtMin(t)}</span></div>
-      ${b > 0 && n ? `<div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mt-2 border border-slate-800"><div class="bg-${tone}-400 h-full transition-all duration-300" style="width:${pct}%"></div></div>
-      <p class="text-[11px] text-${tone}-300 mt-1.5">${msg}</p>` : ''}</div>`;
-  }
-
-  function renderBanner() {
-    const el = $('rhEditBanner'), r = S.routines.find(x => x.id === S.draft.id);
-    el.classList.toggle('hidden', !r);
-    $('rhSaveCopy').classList.toggle('hidden', !r);
-    if (r) el.innerHTML = `Editing “${esc(r.name)}” — Save Routine overwrites it.`;
-  }
-
-  // ---------- Saved routines ----------
-  function renderRoutineList() {
-    const q = S.ui.q.trim().toLowerCase();
-    const list = S.routines.filter(r => !q || r.name.toLowerCase().includes(q) ||
-      r.items.some(i => i.name.toLowerCase().includes(q) || (LABEL[i.group] || '').toLowerCase().includes(q)));
-    $('rhRoutineList').innerHTML = list.length ? list.map(r => {
-      const open = !!S.ui.openRoutines[r.id];
-      return `<div class="bg-slate-900/70 border border-slate-800 rounded-xl">
-        <button onclick="rh.toggleRoutine('${r.id}')" class="w-full flex items-center justify-between px-3 py-2.5 text-left">
-          <div><div class="text-xs font-bold text-slate-100">${esc(r.name)}</div>
-            <div class="text-[11px] text-slate-400">${r.items.length} exercises · ≈ ${fmtMin(sumSecs(r.items))}</div></div>
-          <span class="text-[11px] text-indigo-400 font-bold">${open ? '▲' : '▼'}</span></button>
-        ${open ? `<div class="px-3 pb-3 pt-2 border-t border-slate-800 space-y-1.5">
-          ${r.items.map(i => `<div class="flex justify-between text-[11px] text-slate-300"><span><span class="inline-block w-1.5 h-1.5 rounded-full mr-1.5" style="background:${color(i.group)}"></span>${esc(i.name)}</span><span class="text-slate-500">${dose(i)}</span></div>`).join('')}
-          <div class="flex gap-1.5 pt-2">
-            <button onclick="rh.editRoutine('${r.id}')" class="${BTN}"><i class="fa-solid fa-pen"></i> Edit</button>
-            <button onclick="rh.dupRoutine('${r.id}')" class="${BTN}"><i class="fa-solid fa-copy"></i> Duplicate</button>
-            <button onclick="rh.delRoutine('${r.id}')" class="${BTN} !text-rose-300 !border-rose-500/30"><i class="fa-solid fa-trash"></i> Delete</button></div></div>` : ''}</div>`;
-    }).join('') : `<p class="text-xs text-slate-500 italic text-center py-3">${S.routines.length ? 'No routines match your search.' : 'No saved routines yet — build one above and tap Save Routine.'}</p>`;
-    $('rhRoutinesBody').classList.toggle('hidden', !S.ui.routinesOpen);
-    $('rhRoutinesChev').textContent = S.ui.routinesOpen ? '▲ Hide' : '▼ Show';
-  }
-
+  // ---------- Custom Workout Builder ----------
   window.renderWorkout = function () {
     if (!ensure()) return;
-    renderBanner(); renderItems(); renderTotals(); renderRoutineList();
+    const banner = $('rhEditBanner');
+    if (S.draft.id) {
+      banner.classList.remove('hidden');
+      banner.innerHTML = `Editing saved routine: <strong>${esc(S.draft.name)}</strong>. Changes overwrite this routine unless you click "Save as copy".`;
+      $('rhSaveCopy').classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
+      $('rhSaveCopy').classList.add('hidden');
+    }
+
+    const itemsContainer = $('rhItems');
+    if (!S.draft.items.length) {
+      itemsContainer.innerHTML = `<p class="text-xs text-slate-400 italic">Your custom workout is empty. Tap ＋ Add on any exercise above to build your routine.</p>`;
+    } else {
+      itemsContainer.innerHTML = S.draft.items.map((item, idx) => `
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2 text-xs">
+          <div class="flex-1 min-w-0">
+            <h4 class="font-bold text-slate-100 truncate">${esc(item.name)}</h4>
+            <div class="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
+              <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">${LABEL[item.group] || item.group}</span>
+              <span>${dose(item)}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="rh.moveItem(${idx}, -1)" class="p-1 hover:bg-slate-800 rounded text-slate-400" ${idx === 0 ? 'disabled class="opacity-30 p-1"' : ''}><i class="fa-solid fa-arrow-up"></i></button>
+            <button onclick="rh.moveItem(${idx}, 1)" class="p-1 hover:bg-slate-800 rounded text-slate-400" ${idx === S.draft.items.length - 1 ? 'disabled class="opacity-30 p-1"' : ''}><i class="fa-solid fa-arrow-down"></i></button>
+            <button onclick="rh.removeItem(${idx})" class="p-1 hover:bg-slate-800 rounded text-rose-400"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    const totalSecs = sumSecs(S.draft.items);
+    const budgetSecs = (S.draft.budget || 0) * 60;
+    const isOver = budgetSecs > 0 && totalSecs > budgetSecs;
+
+    $('rhTotals').innerHTML = `
+      <div class="flex justify-between items-center text-xs font-bold border-t border-slate-800 pt-2">
+        <span class="text-slate-300">Estimated Duration:</span>
+        <span class="${isOver ? 'text-rose-400' : 'text-emerald-400'}">${fmtMin(totalSecs)} ${S.draft.budget ? `/ ${S.draft.budget} min target` : ''}</span>
+      </div>
+      ${isOver ? `<p class="text-[11px] text-rose-400 mt-1">⚠️ Exceeds time budget by ${fmtMin(totalSecs - budgetSecs)}</p>` : ''}
+    `;
   };
 
-  // ---------- Weekly schedule ----------
+  // ---------- Saved Routines & Search ----------
+  window.renderRoutines = function () {
+    if (!ensure()) return;
+    const list = $('rhRoutineList');
+    const q = (S.ui.q || '').toLowerCase();
+    const filtered = S.routines.filter(r => {
+      if (!q) return true;
+      if (r.name.toLowerCase().includes(q)) return true;
+      return r.items.some(i => i.name.toLowerCase().includes(q) || (LABEL[i.group] || i.group).toLowerCase().includes(q));
+    });
+
+    if (!filtered.length) {
+      list.innerHTML = `<p class="text-xs text-slate-400 italic">${q ? 'No matching routines found.' : 'No saved routines yet. Build one above and save it!'}</p>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(r => {
+      const isOpen = S.ui.openRoutines[r.id];
+      const dur = sumSecs(r.items);
+      return `<div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-2">
+        <div class="flex items-center justify-between gap-2">
+          <div class="cursor-pointer flex-1" onclick="rh.toggleRoutineDetails('${r.id}')">
+            <h4 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              ${esc(r.name)}
+              <i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}"></i>
+            </h4>
+            <div class="text-[11px] text-slate-400 mt-0.5">${r.items.length} exercises • ~${fmtMin(dur)}</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="rh.loadRoutine('${r.id}')" class="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition">Edit / Load</button>
+            <button onclick="rh.dupRoutine('${r.id}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700 transition" title="Duplicate"><i class="fa-solid fa-copy"></i></button>
+            <button onclick="rh.delRoutine('${r.id}')" class="px-2 py-1 bg-slate-800 hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 text-xs rounded-lg border border-slate-700 transition"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+        ${isOpen ? `<div class="pt-2 border-t border-slate-800 space-y-1.5 text-xs text-slate-300">
+          ${r.items.map(i => `<div class="flex justify-between text-[11px]">
+            <span>${esc(i.name)} <span class="text-slate-500">(${LABEL[i.group] || i.group})</span></span>
+            <span class="text-indigo-300 font-semibold">${dose(i)}</span>
+          </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  };
+
+  // ---------- Weekly Schedule ----------
   window.renderSchedule = function () {
     if (!ensure()) return;
-    const todayKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
-    const byId = {}; S.routines.forEach(r => byId[r.id] = r);
-    let week = 0;
-    const rows = DAYS.map(([k, name]) => {
-      const ids = (S.sched[k] || []).filter(id => byId[id]);
-      const mins = ids.reduce((a, id) => a + sumSecs(byId[id].items), 0); week += mins;
-      const avail = S.routines.filter(r => !ids.includes(r.id));
-      return `<div class="bg-slate-900/70 border ${k === todayKey ? 'border-emerald-500/50' : 'border-slate-800'} rounded-xl p-3">
-        <div class="flex items-center justify-between mb-1.5">
-          <span class="text-xs font-bold ${k === todayKey ? 'text-emerald-400' : 'text-slate-200'}">${name}${k === todayKey ? ' · today' : ''}</span>
-          <span class="text-[11px] text-slate-400">${ids.length ? '≈ ' + fmtMin(mins) : 'Rest day'}</span></div>
-        <div class="space-y-1.5">${ids.map(id => {
-          const r = byId[id], open = S.ui.openSched[k + id];
-          return `<div class="bg-slate-800/70 rounded-lg"><div class="flex items-center">
-            <button onclick="rh.toggleSchedItem('${k}','${id}')" class="flex-1 text-left px-2.5 py-1.5 text-[11px] font-semibold text-slate-100">${open ? '▲' : '▼'} ${esc(r.name)} <span class="text-slate-500 font-normal">· ${fmtMin(sumSecs(r.items))}</span></button>
-            <button onclick="rh.unschedule('${k}','${id}')" class="px-2.5 text-slate-500 hover:text-rose-400"><i class="fa-solid fa-xmark text-xs"></i></button></div>
-            ${open ? `<div class="px-2.5 pb-2 space-y-0.5">${r.items.map(i => `<div class="text-[11px] text-slate-400">• ${esc(i.name)} — ${dose(i)}</div>`).join('')}</div>` : ''}</div>`;
-        }).join('')}</div>
-        ${avail.length ? `<select onchange="rh.schedule('${k}',this.value);this.value=''" class="${INP} mt-2"><option value="">＋ Add routine…</option>
-          ${avail.map(r => `<option value="${r.id}">${esc(r.name)} (${fmtMin(sumSecs(r.items))})</option>`).join('')}</select>` : ''}</div>`;
+    const container = $('rhSchedule');
+    container.innerHTML = DAYS.map(([dayKey, dayLabel]) => {
+      const assignedIds = S.sched[dayKey] || [];
+      return `<div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+        <span class="font-bold text-slate-200 w-12">${dayLabel}</span>
+        <div class="flex-1 flex flex-wrap gap-1.5">
+          ${assignedIds.length ? assignedIds.map(rid => {
+            const r = S.routines.find(x => x.id === rid);
+            return r ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 text-[11px]">
+              ${esc(r.name)}
+              <button onclick="rh.unassign('${dayKey}', '${rid}')" class="hover:text-rose-300 text-[10px]"><i class="fa-solid fa-xmark"></i></button>
+            </span>` : '';
+          }).join('') : `<span class="text-slate-500 italic text-[11px]">Rest / Mobility free day</span>`}
+        </div>
+        <select onchange="rh.assign('${dayKey}', this.value); this.value='';" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-300 focus:outline-none">
+          <option value="">＋ Assign routine...</option>
+          ${S.routines.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}
+        </select>
+      </div>`;
     }).join('');
-    $('rhSchedule').innerHTML = (S.routines.length ? '' : `<p class="text-xs text-slate-500 italic text-center py-2">Save a routine first, then schedule it here.</p>`) +
-      `<div class="text-[11px] text-slate-400 text-right mb-1">Week total ≈ ${fmtMin(week)}</div>` + rows;
-    $('rhSchedBody').classList.toggle('hidden', !S.ui.schedOpen);
-    $('rhSchedChev').textContent = S.ui.schedOpen ? '▲ Hide' : '▼ Show';
   };
 
-  // ---------- Actions (called from onclick attributes) ----------
-  const num = (v, min, dflt) => { const n = parseFloat(v); return isNaN(n) ? dflt : Math.max(min, n); };
-
-window.rehabData = {
-  get: () => ({ exercises: S.exercises, routines: S.routines, sched: S.sched }),
-  replace({ exercises, routines, sched }) {
-    // keep existing photos for exercises that share an id (photos aren't in the CSV)
-    const oldImg = {};
-    S.exercises.forEach(e => { if (e.img) oldImg[e.id] = e.img; });
-    S.exercises = exercises.map(e => Object.assign({ img: '' }, e, oldImg[e.id] ? { img: oldImg[e.id] } : {}));
-
-    S.routines = routines;
-
-    // drop schedule entries that point to routines which no longer exist
-    const ids = new Set(routines.map(r => r.id));
-    S.sched = {};
-    Object.keys(sched).forEach(k => { S.sched[k] = sched[k].filter(id => ids.has(id)); });
-
-    S.draft = { id: null, name: '', budget: S.draft.budget, items: [] };
-    saveEx(); saveRoutines(); saveSched(); saveDraft(); renderAll();
-  }
-};
-
-
-
-
-  const rh = window.rh = {
-    pick(g) { S.group = g; S.ui.editing = undefined; renderCharacterView(); renderLegend(); renderPicker();
-      $('rhPickerCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },
-    newEx() { S.ui.editing = null; S.ui.formImg = ''; renderPicker(); },
-    editEx(id) { S.ui.editing = id; S.ui.formImg = (S.exercises.find(e => e.id === id) || {}).img || ''; renderPicker(); },
-    cancelEx() { S.ui.editing = undefined; renderPicker(); },
-    toggleEx(id) { S.ui.openEx[id] = !S.ui.openEx[id]; renderPicker(); },
-    pickImage(input) {
-      const f = input.files && input.files[0]; if (!f) return;
-      readImage(f).then(url => { S.ui.formImg = url; $('rhF_prev').innerHTML = prevHTML(); })
-        .catch(() => toast('Could not read that image'));
+  // ---------- Actions (Global `rh` namespace) ----------
+  window.rh = {
+    pick(g) {
+      S.group = g;
+      renderCharacterView();
+      renderLegend();
+      renderPicker();
     },
-    clearImage() { S.ui.formImg = ''; const p = $('rhF_prev'); if (p) p.innerHTML = ''; const f = $('rhF_file'); if (f) f.value = ''; },
-    saveEx() {
-      const name = $('rhF_name').value.trim();
-      if (!name) return toast('Give the exercise a name');
-      const rawVideo = $('rhF_video').value.trim(), video = cleanUrl(rawVideo);
-      if (rawVideo && !video) return toast("That video link doesn't look valid");
-      const cur = S.ui.editing ? S.exercises.find(e => e.id === S.ui.editing) : null;
-      const prim = cur ? cur.group : S.group;
-      const also = [...document.querySelectorAll('.rhF_grp:checked')].map(c => c.value).filter(g => g !== prim);
-      const v = { name, sets: num($('rhF_sets').value, 1, 2), reps: num($('rhF_reps').value, 1, 10), unit: $('rhF_unit').value,
-        rest: num($('rhF_rest').value, 0, 30), also, desc: $('rhF_desc').value.trim(), video, img: S.ui.formImg || '' };
-      let id;
-      if (cur) { Object.assign(cur, v); id = cur.id; }
-      else { id = uid(); S.exercises.push(Object.assign({ id, group: S.group }, v)); }
-      S.ui.editing = undefined; S.ui.formImg = '';
-      saveEx(); renderPicker(); toast('Exercise saved');
+    viewImg(id) {
+      const e = id ? S.exercises.find(x => x.id === id) : null;
+      openViewer(e ? e.img : S.ui.formImg, e ? e.name : '');
+    },
+    closeImg: closeViewer,
+    toggleExDetails(id) {
+      S.ui.openEx[id] = !S.ui.openEx[id];
+      renderPicker();
+    },
+    newEx() {
+      S.ui.editing = 'new';
+      S.ui.formImg = '';
+      renderPicker();
+    },
+    editEx(id) {
+      const e = S.exercises.find(x => x.id === id);
+      if (e) {
+        S.ui.editing = id;
+        S.ui.formImg = e.img || '';
+        renderPicker();
+      }
+    },
+    cancelExForm() {
+      S.ui.editing = undefined;
+      S.ui.formImg = '';
+      renderPicker();
+    },
+    clearImage() {
+      S.ui.formImg = '';
+      const p = $('rhF_imgPrev');
+      if (p) p.innerHTML = '';
+    },
+    async handleImg(e) {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        try {
+          S.ui.formImg = await readImage(file);
+          const p = $('rhF_imgPrev');
+          if (p) p.innerHTML = prevHTML();
+        } catch (err) {
+          toast('Failed to load image');
+        }
+      }
+    },
+    saveExForm(id) {
+      const name = ($('rhF_name').value || '').trim();
+      if (!name) return toast('Please enter an exercise name');
+      const sets = parseInt($('rhF_sets').value, 10) || 1;
+      const reps = parseInt($('rhF_reps').value, 10) || 1;
+      const unit = $('rhF_unit').value;
+      const rest = parseInt($('rhF_rest').value, 10) || 0;
+      const desc = ($('rhF_desc').value || '').trim();
+      const video = ($('rhF_video').value || '').trim();
+      const checkboxes = document.querySelectorAll('.rhF_grp:checked');
+      const also = Array.from(checkboxes).map(c => c.value).filter(g => g !== S.group);
+
+      if (id) {
+        const idx = S.exercises.findIndex(x => x.id === id);
+        if (idx !== -1) {
+          S.exercises[idx] = Object.assign(S.exercises[idx], { name, sets, reps, unit, rest, desc, video, also, img: S.ui.formImg });
+        }
+      } else {
+        S.exercises.push({ id: uid(), group: S.group, name, sets, reps, unit, rest, desc, video, also, img: S.ui.formImg });
+      }
+      saveEx();
+      S.ui.editing = undefined;
+      S.ui.formImg = '';
+      renderPicker();
     },
     delEx(id) {
-      if (!confirm('Delete this exercise from the suggestions? (Saved routines keep their copy.)')) return;
-      S.exercises = S.exercises.filter(e => e.id !== id); saveEx(); renderPicker();
+      if (confirm('Delete this exercise suggestion?')) {
+        S.exercises = S.exercises.filter(x => x.id !== id);
+        saveEx();
+        renderPicker();
+      }
     },
     resetEx() {
-      if (!confirm('Restore the original suggestions? Your edits and custom exercises will be lost.')) return;
-      S.exercises = defaultExercises(); S.ui.editing = undefined; saveEx(); renderPicker(); toast('Suggestions restored');
+      if (confirm('Reset exercise list to defaults? This keeps your saved custom routines.')) {
+        S.exercises = defaultExercises();
+        saveEx();
+        renderPicker();
+      }
     },
-    toggleDraft(id) {
-      const i = S.draft.items.findIndex(x => x.src === id);
-      if (i >= 0) S.draft.items.splice(i, 1);
-      else { const e = S.exercises.find(x => x.id === id); if (!e) return;
-        S.draft.items.push({ uid: uid(), src: e.id, name: e.name, group: e.group, sets: e.sets, reps: e.reps, unit: e.unit, rest: e.rest }); }
-      saveDraft(); renderPicker(); renderItems(); renderTotals();
+    addEx(id) {
+      const e = S.exercises.find(x => x.id === id);
+      if (e) {
+        S.draft.items.push(JSON.parse(JSON.stringify(e)));
+        saveDraft();
+        renderWorkout();
+      }
     },
-    setName(v) { S.draft.name = v; saveDraft(); },
-    setBudget(v) { S.draft.budget = num(v, 0, 0); saveDraft(); renderTotals(); },
-    itemSet(i, f, v) { const e = S.draft.items[i]; if (!e) return; e[f] = num(v, f === 'rest' ? 0 : 1, e[f]); saveDraft(); renderItems(); renderTotals(); },
-    moveItem(i, d) { const a = S.draft.items, j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; saveDraft(); renderItems(); },
-    removeItem(i) { S.draft.items.splice(i, 1); saveDraft(); renderPicker(); renderItems(); renderTotals(); },
-    clearDraft() { S.draft = { id: null, name: '', budget: S.draft.budget, items: [] }; $('rhName').value = ''; saveDraft(); renderPicker(); renderWorkout(); },
+    setName(val) {
+      S.draft.name = val;
+      saveDraft();
+    },
+    setBudget(val) {
+      S.draft.budget = parseFloat(val) || 0;
+      saveDraft();
+      renderWorkout();
+    },
+    moveItem(idx, dir) {
+      const target = idx + dir;
+      if (target >= 0 && target < S.draft.items.length) {
+        const temp = S.draft.items[idx];
+        S.draft.items[idx] = S.draft.items[target];
+        S.draft.items[target] = temp;
+        saveDraft();
+        renderWorkout();
+      }
+    },
+    removeItem(idx) {
+      S.draft.items.splice(idx, 1);
+      saveDraft();
+      renderWorkout();
+    },
+    clearDraft() {
+      S.draft = { id: null, name: '', budget: 30, items: [] };
+      saveDraft();
+      $('rhName').value = '';$('rhBudget').value = 30;
+      renderWorkout();
+    },
     saveRoutine(asCopy) {
-      const name = S.draft.name.trim();
-      if (!name) return toast('Name your routine first');
-      if (!S.draft.items.length) return toast('Add at least one exercise');
-      const items = S.draft.items.map(i => Object.assign({}, i));
-      const ex = !asCopy && S.routines.find(r => r.id === S.draft.id);
-      if (ex) { ex.name = name; ex.items = items; }
-      else S.routines.push({ id: uid(), name, items });
-      saveRoutines(); rh.clearDraft(); renderSchedule(); toast('Routine saved');
+      const name = (S.draft.name || '').trim();
+      if (!name) return toast('Please give your routine a name');
+      if (!S.draft.items.length) return toast('Add at least one exercise to your routine');
+
+      if (S.draft.id && !asCopy) {
+        const idx = S.routines.findIndex(r => r.id === S.draft.id);
+        if (idx !== -1) {
+          S.routines[idx] = { id: S.draft.id, name, budget: S.draft.budget, items: JSON.parse(JSON.stringify(S.draft.items)) };
+        }
+      } else {
+        const newId = uid();
+        S.routines.push({ id: newId, name, budget: S.draft.budget, items: JSON.parse(JSON.stringify(S.draft.items)) });
+        S.draft.id = newId;
+      }
+      saveRoutines();
+      saveDraft();
+      renderWorkout();
+      renderRoutines();
+      renderSchedule();
+      toast('Routine saved!');
     },
-    toggleRoutines() { S.ui.routinesOpen = !S.ui.routinesOpen; renderRoutineList(); },
-    toggleRoutine(id) { S.ui.openRoutines[id] = !S.ui.openRoutines[id]; renderRoutineList(); },
-    search(v) { S.ui.q = v; renderRoutineList(); },
-    editRoutine(id) {
-      const r = S.routines.find(x => x.id === id); if (!r) return;
-      S.draft = { id: r.id, name: r.name, budget: S.draft.budget, items: r.items.map(i => Object.assign({}, i, { uid: uid() })) };
-      $('rhName').value = r.name; saveDraft(); renderPicker(); renderWorkout();
-      $('rhBuilderCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toggleRoutines() {
+      S.ui.routinesOpen = !S.ui.routinesOpen;
+      $('rhRoutinesBody').classList.toggle('hidden', !S.ui.routinesOpen);$('rhRoutinesChev').textContent = S.ui.routinesOpen ? '▲ Hide' : '▼ Show';
+    },
+    toggleRoutineDetails(id) {
+      S.ui.openRoutines[id] = !S.ui.openRoutines[id];
+      renderRoutines();
+    },
+    search(val) {
+      S.ui.q = val;
+      renderRoutines();
+    },
+    loadRoutine(id) {
+      const r = S.routines.find(x => x.id === id);
+      if (r) {
+        S.draft = JSON.parse(JSON.stringify(r));
+        saveDraft();
+        $('rhName').value = S.draft.name;
+        $('rhBudget').value = S.draft.budget;
+        renderWorkout();
+        window.scrollTo({ top: $('rhBuilderCard').offsetTop - 20, behavior: 'smooth' });
+      }
     },
     dupRoutine(id) {
-      const r = S.routines.find(x => x.id === id); if (!r) return;
-      S.routines.push({ id: uid(), name: r.name + ' (copy)', items: r.items.map(i => Object.assign({}, i)) });
-      saveRoutines(); renderWorkout(); renderSchedule();
+      const r = S.routines.find(x => x.id === id);
+      if (r) {
+        const dup = JSON.parse(JSON.stringify(r));
+        dup.id = uid();
+        dup.name += ' (Copy)';
+        S.routines.push(dup);
+        saveRoutines();
+        renderRoutines();
+      }
     },
     delRoutine(id) {
-      if (!confirm('Delete this routine? It will also be removed from your weekly schedule.')) return;
-      S.routines = S.routines.filter(r => r.id !== id);
-      Object.keys(S.sched).forEach(k => { S.sched[k] = S.sched[k].filter(x => x !== id); });
-      if (S.draft.id === id) S.draft.id = null;
-      saveRoutines(); saveSched(); saveDraft(); renderWorkout(); renderSchedule();
+      if (confirm('Delete this saved routine?')) {
+        S.routines = S.routines.filter(x => x.id !== id);
+        saveRoutines();
+        renderRoutines();
+        renderSchedule();
+      }
     },
-    toggleSched() { S.ui.schedOpen = !S.ui.schedOpen; renderSchedule(); },
-    toggleSchedItem(k, id) { S.ui.openSched[k + id] = !S.ui.openSched[k + id]; renderSchedule(); },
-    schedule(k, id) { if (!id) return; (S.sched[k] = S.sched[k] || []).push(id); saveSched(); renderSchedule(); },
-    unschedule(k, id) { S.sched[k] = (S.sched[k] || []).filter(x => x !== id); saveSched(); renderSchedule(); }
+    toggleSched() {
+      S.ui.schedOpen = !S.ui.schedOpen;
+      $('rhSchedBody').classList.toggle('hidden', !S.ui.schedOpen);$('rhSchedChev').textContent = S.ui.schedOpen ? '▲ Hide' : '▼ Show';
+    },
+    assign(dayKey, routineId) {
+      if (!routineId) return;
+      if (!S.sched[dayKey]) S.sched[dayKey] = [];
+      if (!S.sched[dayKey].includes(routineId)) {
+        S.sched[dayKey].push(routineId);
+        saveSched();
+        renderSchedule();
+      }
+    },
+    unassign(dayKey, routineId) {
+      if (S.sched[dayKey]) {
+        S.sched[dayKey] = S.sched[dayKey].filter(id => id !== routineId);
+        saveSched();
+        renderSchedule();
+      }
+    }
+  };
+
+  // ---------- Data bridge for csv-io.js ----------
+  // get()     -> { exercises, routines, sched }   (live state, or straight from storage if the tab isn't in the DOM)
+  // replace() -> overwrites all three, keeps existing photos (CSV has none), saves and re-renders
+  window.rehabData = {
+    get() {
+      if (ensure()) return { exercises: S.exercises, routines: S.routines, sched: S.sched };
+      return { exercises: load(KEY.ex, []), routines: load(KEY.routines, []), sched: load(KEY.sched, {}) };
+    },
+    replace(d) {
+      const live = ensure();
+      const oldEx = live ? S.exercises : load(KEY.ex, []);
+      const imgById = {};
+      (oldEx || []).forEach(e => { if (e && e.img) imgById[e.id] = e.img; });
+
+      const exercises = (d.exercises || []).filter(e => LABEL[e.group]).map(e => ({
+        id: e.id || uid(), group: e.group, name: e.name,
+        sets: e.sets || 1, reps: e.reps || 1, unit: e.unit === 's' ? 's' : 'r', rest: e.rest || 0,
+        also: (e.also || []).filter(g => LABEL[g] && g !== e.group),
+        desc: e.desc || '', video: e.video || '', img: e.img || imgById[e.id] || ''
+      }));
+      const routines = (d.routines || []).map(r => ({ id: r.id, name: r.name, budget: r.budget || 30, items: r.items || [] }));
+      const sched = d.sched || {};
+
+      if (!live) { store(KEY.ex, exercises); store(KEY.routines, routines); store(KEY.sched, sched); return; }
+
+      S.exercises = exercises; S.routines = routines; S.sched = sched;
+      if (S.draft.id && !routines.some(r => r.id === S.draft.id)) S.draft.id = null;
+      S.ui.editing = undefined; S.ui.formImg = ''; S.ui.openEx = {}; S.ui.openRoutines = {};
+      saveEx(); saveRoutines(); saveSched(); saveDraft();
+      renderAll();
+    }
   };
 })();

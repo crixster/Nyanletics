@@ -625,7 +625,9 @@
           </div>
         </section>
       </div>
-<div id="rehabTab" class="hidden space-y-5"></div>
+<div id="rehabTab" class="hidden space-y-5">
+  <!-- Dynamic Rehab content injected via rehab.js -->
+</div>
 
 <div id="runTab" class="hidden space-y-5"></div>
 
@@ -637,11 +639,18 @@
       <span class="text-lg">🔑</span>
       <div>
         <h3 class="text-sm font-bold text-slate-100">Gemini API Key</h3>
-        <p class="text-[11px] text-slate-400">One key shared by the Macro Tracker AI scan and Running AI features</p>
+        <p class="text-[11px] text-slate-400">Used in Macro Tracker AI scan and Running AI features</p>
       </div>
     </div>
     <input type="password" id="gemini-key-input" placeholder="AIzaSy..." autocomplete="off" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500" />
-        <p class="text-[10px] text-slate-500">Video guide: <a href="https://www.youtube.com/watch?v=PX_cGeXbSfE" target="_blank" rel="noopener" class="text-emerald-400 underline">How to Create API Key in Google AI Studio - Gemini API Key (2026)</a></p>
+        <p class="text-[10px] text-slate-500">Video guide: <a href="https://www.youtube.com/watch?v=PX_cGeXbSfE" target="_blank" rel="noopener" class="text-emerald-400 underline">How to Create API Key</a>
+        <br>
+<a href="https://aistudio.google.com/"
+target="_blank"
+rel="noopener noreferrer"
+class="text-emerald-400 underline">Create Key in Google AI Studio</a>
+        
+        </p>
     <button onclick="saveGeminiKey()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow-md">Save API Key</button>
   </div>
 
