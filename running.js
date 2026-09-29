@@ -3,8 +3,7 @@
 // Owns: distance / time / pace / speed calculator (base 1 km) and the
 //       Gemini workout-text estimator with a regex (offline) fallback.
 // Renders itself into <div id="runTab"> — index.html only needs that
-// empty div. Reuses the Gemini key + model from Macro Tracker settings
-// (geminiApiKey, callGeminiVision, openSettings in macro-tracker.js).
+// empty div. Reuses the Gemini key + model settings page
 // localStorage key: apex_run_state
 // =====================================================================
 (function () {
@@ -14,8 +13,7 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const toast = m => (typeof window.showToast === 'function' ? window.showToast(m) : console.log(m));
-  const apiKey = () => (typeof geminiApiKey !== 'undefined' ? geminiApiKey : '');
-
+  const apiKey = () => (typeof window.getGeminiApiKey === 'function' ? window.getGeminiApiKey() : '');
   const NUM = 'w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2.5 text-base text-center font-bold text-white tabular-nums focus:outline-none focus:border-emerald-500';
   const LBL = 'text-[11px] text-slate-400 font-medium block mb-1';
   const BTN = 'px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg border border-slate-700 transition text-xs';
@@ -28,7 +26,7 @@
     dist: 1,          // km  (base = 1 km)
     pace: 300,        // sec / km  (5:00 /km)
     mode: 'dist',     // when pace/speed is edited, recalc 'dist' (keep time) or 'time' (keep distance)
-    easy: 360,        // sec / km used by Gemini for warm-ups etc. with no stated pace
+    easy: 480,        // sec / km used by Gemini for warm-ups etc. with no stated pace
     text: '',
     result: null,
     helpPinned: false
@@ -71,7 +69,7 @@
       <div class="flex items-center gap-2"><span class="text-lg">🏃</span>
         <div><h3 class="text-sm font-bold text-slate-100">Running</h3>
         <p class="text-[11px] text-slate-400">Pace calculator and AI workout estimator</p></div></div>
-      <button onclick="rn.settings()" class="${BTN}" title="Gemini API key & model">⚙️ Settings</button>
+      
     </div>
 
     <div id="rnCalcCard" class="glass-card rounded-2xl p-4 shadow-xl border border-indigo-500/20">
@@ -110,36 +108,46 @@
     </div>
 
     <div id="rnWorkoutCard" class="glass-card rounded-2xl p-4 shadow-xl border border-emerald-500/20">
-      <h2 class="text-base font-bold text-slate-200 mb-1">Workout Estimator</h2>
-      <p class="text-[11px] text-slate-400 mb-3">Paste a workout to estimate its total distance and time.</p>
-      <textarea id="rnText" rows="6" oninput="rn.onText(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500" placeholder="One step per line (or separated by commas):&#10;1-1.5km easy warm up&#10;3-5 x 1km @ 4:50-4:15&#10;500m float @ 5:00-7:00&#10;then 1.5km cooldown"></textarea>
-      <div class="flex items-end gap-2 mt-2">
-        <div class="w-24 flex-shrink-0"><label class="${LBL}" for="rnEasy">Easy pace /km</label>
-          <input id="rnEasy" type="text" inputmode="text" placeholder="6:00" onchange="rn.onEasy(this.value)" class="${NUM} !text-sm"></div>
-        <div id="rnEstWrap" class="relative flex-1 flex" onmouseenter="rn.help(true)" onmouseleave="rn.help(false)">
-          <button id="rnGo" onclick="rn.estimate()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] disabled:opacity-60 text-white font-semibold py-2.5 rounded-l-lg text-sm transition">Estimate</button>
+          <div class="flex items-center gap-2 mb-1">
+        <h2 class="text-base font-bold text-slate-200">Workout Estimator</h2>
+        <div id="rnHelpWrap" class="relative inline-block" onmouseenter="rn.helpHover(true)" onmouseleave="rn.helpHover(false)">
           <button id="rnHelpBtn" type="button" onclick="rn.helpToggle(event)" aria-label="Formatting guide" aria-expanded="false" aria-controls="rnHelp"
-            class="px-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-r-lg border-l border-emerald-400/30 text-sm transition"><i class="fa-regular fa-circle-question"></i></button>
-          <div id="rnHelp" role="tooltip" class="hidden absolute right-0 bottom-full pb-2 z-40 w-72 max-w-[calc(100vw-3rem)]">
-            <div class="bg-slate-950 border border-slate-600 rounded-xl p-3 shadow-2xl text-[11px] text-slate-400 space-y-1.5">
-              <p class="text-slate-200 font-semibold">How to write the workout</p>
-              <p>Any wording works with Gemini. The backup regex parser needs this layout:</p>
-              <ul class="space-y-1 list-disc pl-4">
-                <li><b class="text-slate-200">One step per line</b>, or separate steps with commas, <code>+</code> or <code>then</code>.</li>
-                <li><b class="text-slate-200">Distance</b> with a unit: <code>1km</code>, <code>500m</code>, <code>5k</code>, <code>3mi</code>. Ranges: <code>1-1.5km</code>.</li>
-                <li><b class="text-slate-200">Time steps</b>: <code>10 min easy</code>, <code>90s</code>, <code>2 min rest</code>. Write rests this way, not as 2:00.</li>
-                <li><b class="text-slate-200">Pace</b> as min:sec per km, after <code>@</code> or in brackets: <code>@ 4:50</code> or <code>(4:50-4:15)</code>.</li>
-                <li><b class="text-slate-200">Rounds</b> before the step: <code>3-5 x 1km</code>, <code>4 rounds 400m</code>, <code>3x1km</code>.</li>
-                <li><b class="text-slate-200">A rounds step repeats every step after it</b> until you write <code>then</code> or a warm-up/cool-down.</li>
+            class="w-4 h-4 p-0 rounded-full border border-slate-500 text-[9px] leading-none font-bold text-slate-400 hover:text-emerald-300 hover:border-emerald-400 focus:outline-none inline-flex items-center justify-center">?</button>
+          <div id="rnHelp" role="tooltip" class="hidden absolute left-0 top-full pt-2 z-40 w-72 max-w-[calc(100vw-3rem)]">
+            <div class="bg-slate-950 border border-slate-700 rounded-xl shadow-2xl p-3 text-[11px] text-slate-200">
+              <p class="font-bold text-slate-100 mb-1.5">How to write the workout</p>
+              <p class="text-slate-300 text-[10px] mb-1.5">Any wording works with Gemini. The backup regex parser needs this layout:</p>
+              <ul class="space-y-1 list-disc pl-3 text-slate-300 text-[10px] leading-tight">
+                <li>One step per line, or separate steps with commas, <code>+</code> or <code>then</code>.</li>
+                <li>Distance with a unit: <code>1km</code>, <code>500m</code>, <code>5k</code>, <code>3mi</code>. Ranges: <code>1-1.5km</code>.</li>
+                <li>Time steps: <code>10 min easy</code>, <code>90s</code>, <code>2 min rest</code>. Write rests this way, not as 2:00.</li>
+                <li>Pace as min:sec per km, after <code>@</code> or in brackets: <code>@ 4:50</code> or <code>(4:50-4:15)</code>.</li>
+                <li>Rounds before the step: <code>3-5 x 1km</code>, <code>4 rounds 400m</code>, <code>3x1km</code>.</li>
+                <li>A rounds step repeats every step after it until you write <code>then</code> or a warm-up/cool-down.</li>
                 <li>No pace given? The easy pace is used. Rests and walks count as time only.</li>
               </ul>
-              <button type="button" onclick="rn.example()" class="${BTN} mt-1">Insert example</button>
+              <button type="button" onclick="rn.example()" class="mt-2 text-[10px] text-emerald-300 hover:text-emerald-200 underline">Insert example</button>
             </div>
           </div>
         </div>
+      </div>
+
+
+      <p class="text-[11px] text-slate-400 mb-3">Paste a workout to estimate its total distance and time.</p>
+      <textarea id="rnText" rows="6" oninput="rn.onText(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500" placeholder="One step per line (or separated by commas):&#10;1-1.5km easy warm up&#10;3-5 x 1km @ 4:50-4:15&#10;500m float @ 5:00-7:00&#10;then 1.5km cooldown"></textarea>
+      
+      <div class="mt-3">
+        <div class="w-24"><label class="${LBL}" for="rnEasy">Easy pace /km</label>
+          <input id="rnEasy" type="text" inputmode="text" placeholder="8:00" onchange="rn.onEasy(this.value)" class="${NUM} !text-sm"></div>
+        <p class="text-[10px] text-slate-500 mt-1.5">Easy pace is used for warm-ups, cool-downs and any step without a pace.</p>
+      </div>
+      <div class="flex gap-2 mt-3">
+        <button id="rnGo" onclick="rn.estimate()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg text-sm transition">Estimate</button>
         <button onclick="rn.clearText()" class="${BTN} !py-2.5 flex-shrink-0">Clear</button>
       </div>
-      <p class="text-[10px] text-slate-500 mt-1.5">Easy pace is used for warm-ups, cool-downs and any step without a pace.</p>
+
+
+
       <div id="rnStatus" class="hidden mt-3 text-xs rounded-lg border px-3 py-2"></div>
       <div id="rnResult" class="mt-3"></div>
     </div>`;
@@ -154,7 +162,7 @@
     $('rnText').value = S.text;
     $('rnEasy').value = fmtPace(S.easy);
     document.addEventListener('click', e => {
-      const w = $('rnEstWrap');
+      const w = $('rnHelpWrap');
       if (S.helpPinned && w && !w.contains(e.target)) { S.helpPinned = false; showHelp(false); }
     });
     S.ready = true;
@@ -217,12 +225,12 @@
       $('rnEasy').value = fmtPace(S.easy); save();
     },
     clearText() { S.text = ''; S.result = null; $('rnText').value = ''; setStatus(''); renderResult(); save(); },
-    settings() { if (typeof window.openSettings === 'function') window.openSettings('running'); },
+   
 
     async estimate() {
       const text = S.text.trim();
       if (!text) return toast('Paste a workout first');
-      if (!apiKey()) return fallback('No Gemini API key. Using regex parser.');
+            if (!apiKey()) return fallback('No Gemini API key (add one in Settings). Using regex parser.');
       const btn = $('rnGo'); btn.disabled = true;
       const model = (typeof cachedWorkingGeminiModel !== 'undefined' && cachedWorkingGeminiModel) ||
                     (typeof GEMINI_PREFERRED_MODEL !== 'undefined' && GEMINI_PREFERRED_MODEL) || 'Gemini';
@@ -243,8 +251,9 @@
       } finally { btn.disabled = false; }
     },
 
-    help(on) { if (!S.helpPinned) showHelp(on); },
+    
     helpToggle(e) { e.stopPropagation(); S.helpPinned = !S.helpPinned; showHelp(S.helpPinned); },
+    helpHover(on) { if (!S.helpPinned) showHelp(on); },
 
     example() {
       S.text = '1-1.5km easy warm up\n3-5 x 1km @ 4:50-4:15\n500m float @ 5:00-7:00\nthen 1.5km cooldown';

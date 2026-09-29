@@ -9,7 +9,7 @@
 // background update, and network-first for everything else (e.g. the Gemini API calls),
 // falling back to cache only if a previously-cached copy exists.
 
-const CACHE_NAME = 'nyanletics-cache-v7';
+const CACHE_NAME = 'nyanletics-cache-v9';
 
 // Keep this list to same-origin files that always exist for the app to boot.
 const APP_SHELL = [
@@ -28,7 +28,11 @@ const APP_SHELL = [
   './timer.css',
   './manifest.json',
   './icon.jpg',
-  './page-icon.png'
+  './page-icon.png',
+  './csv-io.js',
+  './splash-1.webp',
+  './splash-2.webp',
+  './splash-3.webp'
 ];
 
 self.addEventListener('install', (event) => {

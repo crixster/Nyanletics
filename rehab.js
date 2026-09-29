@@ -579,6 +579,30 @@ function ensure() {
 
   // ---------- Actions (called from onclick attributes) ----------
   const num = (v, min, dflt) => { const n = parseFloat(v); return isNaN(n) ? dflt : Math.max(min, n); };
+
+window.rehabData = {
+  get: () => ({ exercises: S.exercises, routines: S.routines, sched: S.sched }),
+  replace({ exercises, routines, sched }) {
+    // keep existing photos for exercises that share an id (photos aren't in the CSV)
+    const oldImg = {};
+    S.exercises.forEach(e => { if (e.img) oldImg[e.id] = e.img; });
+    S.exercises = exercises.map(e => Object.assign({ img: '' }, e, oldImg[e.id] ? { img: oldImg[e.id] } : {}));
+
+    S.routines = routines;
+
+    // drop schedule entries that point to routines which no longer exist
+    const ids = new Set(routines.map(r => r.id));
+    S.sched = {};
+    Object.keys(sched).forEach(k => { S.sched[k] = sched[k].filter(id => ids.has(id)); });
+
+    S.draft = { id: null, name: '', budget: S.draft.budget, items: [] };
+    saveEx(); saveRoutines(); saveSched(); saveDraft(); renderAll();
+  }
+};
+
+
+
+
   const rh = window.rh = {
     pick(g) { S.group = g; S.ui.editing = undefined; renderCharacterView(); renderLegend(); renderPicker();
       $('rhPickerCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },

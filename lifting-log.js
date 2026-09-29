@@ -1,5 +1,5 @@
 // =====================================================================
-// lifting-log.js — Apex Fitness: Lifting Log tab
+// lifting-log.js — Nyanletics: Lifting Log tab
 // Owns: exercises[], oneRMManualOverrides, collapsedGroupsMap, the 1RM
 // card, the weight-suggestions card, and the exercise log/edit/rename UI.
 // Calls out to plate-loader.js's calculateFromTarget() in ONE place
@@ -23,6 +23,22 @@ let exercises = [
 ];
 
 let oneRMManualOverrides = {};
+
+const LIFT_KEY = 'nyanletics_lifting_log', ORM_KEY = 'nyanletics_1rm_overrides';
+function saveLifting() {
+  try {
+    localStorage.setItem(LIFT_KEY, JSON.stringify(exercises));
+    localStorage.setItem(ORM_KEY, JSON.stringify(oneRMManualOverrides));
+  } catch (e) { console.warn('lifting save failed', e); }
+}
+(function () {
+  try {
+    const s = JSON.parse(localStorage.getItem(LIFT_KEY));
+    if (Array.isArray(s)) exercises = s;
+    const o = JSON.parse(localStorage.getItem(ORM_KEY));
+    if (o && typeof o === 'object') oneRMManualOverrides = o;
+  } catch (e) {}
+})();
 
     function isBodyweightMovementName(name) {
       if (!name) return false;

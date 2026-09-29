@@ -48,42 +48,39 @@ let geminiApiKey = '';
       localStorage.setItem('apex_favourites', JSON.stringify(favourites));
     }
 
-  function saveSettings() {
-    const key = document.getElementById('gemini-key-input').value.trim();
-    geminiApiKey = key;
-    localStorage.setItem('apex_gemini_key', geminiApiKey);
-
-    // Only touch macro targets when that section is visible (opened from the Macro tab)
-    const macroOpen = !document.getElementById('macro-goals-section').classList.contains('hidden');
-    if (macroOpen) {
-      const cal = parseInt(document.getElementById('goal-cal-input').value) || 2000;
-      const p = parseInt(document.getElementById('goal-p-input').value) || 150;
-      const c = parseInt(document.getElementById('goal-c-input').value) || 200;
-      const f = parseInt(document.getElementById('goal-f-input').value) || 65;
-      goals = { cal, p, c, f };
-      localStorage.setItem('apex_macro_goals', JSON.stringify(goals));
-    }
-
-    closeSettings();
-    if (macroOpen) renderDay();
-    showToast('Settings saved');
+    function getGeminiApiKey() {
+    return geminiApiKey || localStorage.getItem('apex_gemini_key') || '';
   }
 
-   function openSettings(context) {
-    const macro = context !== 'running';
-    document.getElementById('macro-goals-section').classList.toggle('hidden', !macro);
-    document.getElementById('settings-title').textContent = macro ? 'Settings' : 'Gemini Settings';
+  function renderSettings() {
+    document.getElementById('gemini-key-input').value = getGeminiApiKey();
     document.getElementById('goal-cal-input').value = goals.cal;
     document.getElementById('goal-p-input').value = goals.p;
     document.getElementById('goal-c-input').value = goals.c;
     document.getElementById('goal-f-input').value = goals.f;
-    document.getElementById('gemini-key-input').value = geminiApiKey;
-    document.getElementById('settings-modal').classList.remove('hidden');
   }
 
-    function closeSettings() {
-      document.getElementById('settings-modal').classList.add('hidden');
-    }
+  function saveGeminiKey() {
+    geminiApiKey = document.getElementById('gemini-key-input').value.trim();
+    localStorage.setItem('apex_gemini_key', geminiApiKey);
+    showToast(geminiApiKey ? 'API key saved' : 'API key cleared');
+  }
+
+  function saveMacroTargets() {
+    const cal = parseInt(document.getElementById('goal-cal-input').value) || 2000;
+    const p = parseInt(document.getElementById('goal-p-input').value) || 150;
+    const c = parseInt(document.getElementById('goal-c-input').value) || 200;
+    const f = parseInt(document.getElementById('goal-f-input').value) || 65;
+    goals = { cal, p, c, f };
+    localStorage.setItem('apex_macro_goals', JSON.stringify(goals));
+    renderSettings();
+    showToast('Macro targets saved');
+  }
+
+  // Kept so old callers still work; they now land on the Settings tab
+  function openSettings() { switchTab('settings'); }
+  function closeSettings() {}
+  function saveSettings() { saveGeminiKey(); saveMacroTargets(); }
 
     function formatDateKey(date) {
       const year = date.getFullYear();
@@ -699,8 +696,8 @@ let geminiApiKey = '';
       if (!file) return;
 
       if (!geminiApiKey) {
-        showToast('Please configure Gemini API key in Settings first!');
-        openSettings();
+        showToast('Please add your Gemini API key in Settings first!');
+        switchTab('settings');
         return;
       }
 
@@ -779,6 +776,10 @@ window.saveFavourites = saveFavourites;
 window.saveSettings = saveSettings;
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
+window.renderSettings = renderSettings;
+window.saveGeminiKey = saveGeminiKey;
+window.saveMacroTargets = saveMacroTargets;
+window.getGeminiApiKey = getGeminiApiKey;
 window.formatDateKey = formatDateKey;
 window.parseDateKey = parseDateKey;
 window.formatDisplayDate = formatDisplayDate;

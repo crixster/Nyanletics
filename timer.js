@@ -51,10 +51,54 @@
 
   const $ = id => document.getElementById(id);
 
-    // ---------- Landscape mode: native lock, else CSS "fake rotate" ----------
+    // ---------- Landscape mode: native lock, else "fake rotate" ----------
   let nativeLandscape = false;
+  let rotHome = null;
   const isLandscapeMode = () =>
-    nativeLandscape || document.body.classList.contains('timer-forced');
+    nativeLandscape || document.body.classList.contains('timer-rot');
+
+  function applyFakeRotate() {
+    const el = $('timerTab');
+    if (!el) return;
+    const w = window.innerWidth, h = window.innerHeight;
+    Object.assign(el.style, {
+      position: 'fixed', top: '0', left: '0',
+      width: h + 'px', height: w + 'px',
+      transformOrigin: 'top left',
+      transform: 'translateX(' + w + 'px) rotate(90deg)',
+      webkitTransformOrigin: 'top left',
+      webkitTransform: 'translateX(' + w + 'px) rotate(90deg)',
+      boxSizing: 'border-box', overflow: 'auto',
+      padding: 'max(0.75rem, env(safe-area-inset-right, 0px)) max(1.5rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px)) max(1.5rem, env(safe-area-inset-top, 0px))',
+
+      webkitOverflowScrolling: 'touch', zIndex: '45',
+      background: 'rgb(15, 23, 42)'
+    });
+  }
+
+  function startFakeRotate() {
+    const el = $('timerTab');
+    if (!el) return;
+    if (!rotHome) {
+      rotHome = document.createComment('timerTab-home');
+      el.parentNode.insertBefore(rotHome, el);
+    }
+    document.body.appendChild(el);
+    document.body.classList.add('timer-rot');
+    document.body.style.overflow = 'hidden';
+    applyFakeRotate();
+  }
+
+  function stopFakeRotate() {
+    const el = $('timerTab');
+    document.body.classList.remove('timer-rot');
+    document.body.style.overflow = '';
+    if (el) {
+      el.removeAttribute('style');
+      if (rotHome && rotHome.parentNode) rotHome.parentNode.insertBefore(el, rotHome);
+    }
+    if (rotHome) { rotHome.remove(); rotHome = null; }
+  }
 
   async function enterLandscape() {
     const so = screen.orientation;
@@ -72,9 +116,8 @@
         }
       }
     }
-    // Native lock refused (or unsupported, e.g. iOS): rotate with CSS instead.
-    if (!nativeLandscape && window.matchMedia('(orientation: portrait)').matches) {
-      document.body.classList.add('timer-forced');
+    if (!nativeLandscape && window.innerHeight >= window.innerWidth) {
+      startFakeRotate();
     }
     renderTimerUI();
   }
@@ -85,7 +128,7 @@
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       nativeLandscape = false;
     }
-    document.body.classList.remove('timer-forced');
+    stopFakeRotate();
     renderTimerUI();
   }
 
@@ -96,6 +139,16 @@
   document.addEventListener('fullscreenchange', () => {
     if (!document.fullscreenElement && nativeLandscape) exitLandscape();
   });
+
+  function onViewportChange() {
+    if (!document.body.classList.contains('timer-rot')) return;
+    const ae = document.activeElement;
+    const typing = ae && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName);
+    if (!typing && window.innerWidth > window.innerHeight) { exitLandscape(); return; }
+    applyFakeRotate();
+  }
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', () => setTimeout(onViewportChange, 250));
 
   // Web Audio Synthesizer for Beeps
   function playBeep(freq = 800, duration = 0.12) {

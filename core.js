@@ -85,13 +85,14 @@ function switchTab(tab) {
   const rehabTab = document.getElementById('rehabTab');
   const runTab = document.getElementById('runTab');
   const timerTab = document.getElementById('timerTab');
-
+  const settingsTab = document.getElementById('settingsTab');
   const tabBtnLog = document.getElementById('tabBtnLog') || document.getElementById('nav-log');
   const tabBtnPlates = document.getElementById('tabBtnPlates') || document.getElementById('nav-plate') || document.getElementById('nav-plates');
   const tabBtnMacros = document.getElementById('tabBtnMacros') || document.getElementById('nav-macro') || document.getElementById('nav-macros');
   const tabBtnRehab = document.getElementById('tabBtnRehab') || document.getElementById('nav-rehab');
   const tabBtnRunning = document.getElementById('tabBtnRunning');
   const tabBtnTimer = document.getElementById('tabBtnTimer');
+  const tabBtnSettings = document.getElementById('tabBtnSettings');
   document.body.classList.toggle('timer-active', tabName === 'timer');
 
   logTab?.classList.add('hidden');
@@ -100,6 +101,7 @@ function switchTab(tab) {
   rehabTab?.classList.add('hidden');
   runTab?.classList.add('hidden');
   timerTab?.classList.add('hidden');
+  settingsTab?.classList.add('hidden');
 
 const inactiveClass = "w-full py-2.5 px-2 text-xs font-semibold rounded-xl transition-all text-slate-300 hover:text-white flex items-center justify-center gap-1.5";
   const activeClass = "w-full py-2.5 px-2 text-xs font-semibold rounded-xl transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-1.5";
@@ -110,6 +112,7 @@ const inactiveClass = "w-full py-2.5 px-2 text-xs font-semibold rounded-xl trans
   if (tabBtnRehab) tabBtnRehab.className = inactiveClass;
   if (tabBtnRunning) tabBtnRunning.className = inactiveClass;
   if (tabBtnTimer) tabBtnTimer.className = inactiveClass;
+  if (tabBtnSettings) tabBtnSettings.className = inactiveClass.replace('w-full', 'col-span-3 w-full');
 
   if (tabName === 'log') {
     logTab?.classList.remove('hidden');
@@ -141,6 +144,10 @@ const inactiveClass = "w-full py-2.5 px-2 text-xs font-semibold rounded-xl trans
     timerTab?.classList.remove('hidden');
     if (tabBtnTimer) tabBtnTimer.className = activeClass;
     if (typeof initTimerUI === 'function') initTimerUI();
+  } else if (tabName === 'settings') {
+    settingsTab?.classList.remove('hidden');
+    if (tabBtnSettings) tabBtnSettings.className = activeClass.replace('w-full', 'col-span-3 w-full');
+    if (typeof renderSettings === 'function') renderSettings();
   }
 }
 
