@@ -150,27 +150,46 @@
   window.addEventListener('resize', onViewportChange);
   window.addEventListener('orientationchange', () => setTimeout(onViewportChange, 250));
 
-  // Web Audio Synthesizer for Beeps
-  function playBeep(freq = 800, duration = 0.12) {
-    if (isMuted) return;
+    // Web Audio Synthesizer for Beeps
+  function unlockAudio() {
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (audioCtx.state !== 'running') audioCtx.resume();
+
+      // iOS: treat as "playback" audio so it plays even with the silent switch on (iOS 16.4+)
+      if (navigator.audioSession) navigator.audioSession.type = 'playback';
+
+      // Play one silent tick to fully unlock the context on iOS
+      const b = audioCtx.createBuffer(1, 1, 22050);
+      const s = audioCtx.createBufferSource();
+      s.buffer = b;
+      s.connect(audioCtx.destination);
+      s.start(0);
+    } catch (e) {
+      console.warn('Audio unlock error', e);
+    }
+  }
+
+  function playBeep(freq = 800, duration = 0.12) {
+    if (isMuted || !audioCtx) return;
+    try {
+      // 'interrupted' is an iOS-only state (e.g. after a call or app switch)
+      if (audioCtx.state !== 'running') audioCtx.resume();
+      const t = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.3, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + duration);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + duration);
+      osc.start(t);
+      osc.stop(t + duration);
     } catch (e) {
       console.warn('Audio play error', e);
     }
   }
-
   function fmtTime(ms) {
     const totalSecs = Math.floor(ms / 1000);
     const m = Math.floor(totalSecs / 60).toString().padStart(2, '0');
@@ -185,8 +204,9 @@
     return `${m}:${s}`;
   }
 
-  function toggleMute() {
+function toggleMute() {
     isMuted = !isMuted;
+    if (!isMuted) unlockAudio();  // <-- add
     renderTimerUI();
   }
 
@@ -627,6 +647,7 @@
       this.resetCountdown();
     },
     toggleCountdown() {
+      unlockAudio()
       const cd = state.countdown;
       cd.running = !cd.running;
       if (cd.running) {
@@ -745,6 +766,7 @@
       this.resetInterval();
     },
     skipInterval() {
+      unlockAudio();
       const it = state.interval;
       if (!it.steps.length) return;
       it.stepIdx++;
@@ -758,6 +780,7 @@
       renderTimerUI();
     },
     toggleInterval() {
+      unlockAudio();
       const it = state.interval;
       it.running = !it.running;
 
