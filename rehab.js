@@ -149,7 +149,7 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
   const S = {
     ready: false, group: 'quads', exercises: [], routines: [], sched: {},
     draft: { id: null, name: '', budget: 30, items: [] },
-    ui: { routinesOpen: true, schedOpen: true, openRoutines: {}, openSched: {}, editing: undefined, q: '', openEx: {}, formImg: '' }
+    ui: { routinesOpen: true, schedOpen: true, openRoutines: {}, openSched: {}, editing: undefined, q: '', openEx: {}, formImg: '', exq: '', openRoutineEx: {} }
   };
   const saveEx = () => { if (!store(KEY.ex, S.exercises)) toast('Storage full — use a smaller photo or remove one'); };
   const saveRoutines = () => store(KEY.routines, S.routines);
@@ -190,6 +190,8 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
           <button onclick="rh.resetEx()" class="${BTN}" title="Restore all suggestions"><i class="fa-solid fa-rotate-left"></i></button>
         </div>
       </div>
+      <input id="rhExSearch" type="search" placeholder="🔍 Search saved exercises (all muscle groups)..." oninput="rh.searchEx(this.value)"
+        class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 mt-3">
       <div id="rhPicker" class="space-y-2 mt-3"></div>
       <p class="text-[10px] text-slate-500 mt-3">General mobility ideas only — not medical advice. See a physio for injuries.</p>`)}
 
@@ -393,6 +395,11 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
 
   // ---------- Suggested exercise list ----------
   // An exercise lives under its primary group (e.group) and is also shown under every group in e.also.
+  // Every word typed must appear somewhere in the name, muscle group(s) or description
+  const matchEx = (e, q) => {
+    const hay = [e.name, LABEL[e.group] || e.group, ...(e.also || []).map(g => LABEL[g] || g), e.desc].join(' ').toLowerCase();
+    return q.split(/\s+/).every(w => hay.includes(w));
+  };
   const belongs = (e, g) => e.group === g || (e.also || []).includes(g);
   const cleanUrl = u => {
     u = (u || '').trim(); if (!u) return '';
@@ -488,11 +495,15 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
 
   window.renderPicker = function () {
     if (!ensure()) return;
-    $('rhPickerTitle').textContent = `${LABEL[S.group]} Exercises`;
-    const items = S.exercises.filter(e => belongs(e, S.group));
+    const q = (S.ui.exq || '').trim().toLowerCase();
+    const searching = q.length > 0;
+    const items = searching ? S.exercises.filter(e => matchEx(e, q)) : S.exercises.filter(e => belongs(e, S.group));
+    $('rhPickerTitle').textContent = searching ? `Search results (${items.length})` : `${LABEL[S.group]} Exercises`;
     const container = $('rhPicker');
     if (!items.length && S.ui.editing !== 'new') {
-      container.innerHTML = `<p class="text-xs text-slate-400 italic">No exercises saved for ${LABEL[S.group]} yet. Tap ＋ Custom to add one.</p>`;
+      container.innerHTML = searching
+        ? `<p class="text-xs text-slate-400 italic">No saved exercises match "${esc(S.ui.exq.trim())}".</p>`
+        : `<p class="text-xs text-slate-400 italic">No exercises saved for ${LABEL[S.group]} yet. Tap ＋ Custom to add one.</p>`;
       return;
     }
     container.innerHTML = items.map(e => {
@@ -518,8 +529,9 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
             <button onclick="rh.delEx('${e.id}')" class="px-2 py-1 bg-slate-800 hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 text-xs rounded-lg border border-slate-700 transition"><i class="fa-solid fa-trash"></i></button>
           </div>
         </div>
-        ${hasSecondary ? `<div class="flex flex-wrap gap-1">
-          ${e.also.map(g => `<span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] text-slate-400">${LABEL[g] || g}</span>`).join('')}
+        ${hasSecondary || searching ? `<div class="flex flex-wrap gap-1">
+          ${searching ? `<span class="px-1.5 py-0.5 rounded bg-indigo-600/30 border border-indigo-500/40 text-[10px] text-indigo-200">${LABEL[e.group] || e.group}</span>` : ''}
+          ${(e.also || []).map(g => `<span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] text-slate-400">${LABEL[g] || g}</span>`).join('')}
         </div>` : ''}
         ${isExpanded ? `<div class="pt-2 border-t border-slate-800/80 text-xs text-slate-300 space-y-2">
           ${e.desc ? `<p class="whitespace-pre-wrap text-slate-400">${esc(e.desc)}</p>` : ''}
@@ -613,10 +625,31 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
           </div>
         </div>
         ${isOpen ? `<div class="pt-2 border-t border-slate-800 space-y-1.5 text-xs text-slate-300">
-          ${r.items.map(i => `<div class="flex justify-between text-[11px]">
-            <span>${esc(i.name)} <span class="text-slate-500">(${LABEL[i.group] || i.group})</span></span>
-            <span class="text-indigo-300 font-semibold">${dose(i)}</span>
-          </div>`).join('')}
+          ${r.items.map((i, idx) => {
+            const open = S.ui.openRoutineEx[r.id + ':' + idx];
+            const live = S.exercises.find(x => x.id === i.id);   // latest saved version, if it still exists
+            const d = live || i;
+            const img = d.img || i.img;
+            const also = (d.also || []).filter(g => g !== d.group);
+            const hasInfo = d.desc || img || d.video;
+            return `<div class="rounded-lg ${open ? 'bg-slate-800/50' : ''}">
+              <div class="flex justify-between items-center gap-2 text-[11px] cursor-pointer hover:bg-slate-800/60 rounded-lg px-1.5 py-1" onclick="rh.toggleRoutineEx('${r.id}', ${idx})">
+                <span class="flex items-center gap-1.5 min-w-0">
+                  <i class="fa-solid fa-chevron-down text-[9px] text-slate-500 transition-transform ${open ? 'rotate-180' : ''}"></i>
+                  <span class="truncate">${esc(i.name)} <span class="text-slate-500">(${LABEL[i.group] || i.group})</span></span>
+                </span>
+                <span class="text-indigo-300 font-semibold flex-shrink-0">${dose(i)}</span>
+              </div>
+              ${open ? `<div class="px-2 pb-2 pt-1 space-y-2 border-t border-slate-800/80 text-xs text-slate-300">
+                ${also.length ? `<div class="flex flex-wrap gap-1">${also.map(g => `<span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] text-slate-400">${LABEL[g] || g}</span>`).join('')}</div>` : ''}
+                ${d.desc ? `<p class="whitespace-pre-wrap text-slate-400">${esc(d.desc)}</p>` : ''}
+                ${img ? `<div><img src="${esc(img)}" onclick="rh.viewImg('${i.id}')" class="max-h-40 max-w-full rounded-lg border border-slate-700 object-contain cursor-zoom-in"></div>` : ''}
+                ${d.video ? `<div><a href="${esc(cleanUrl(d.video))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:underline"><i class="fa-brands fa-youtube"></i> Watch video tutorial</a></div>` : ''}
+                ${hasInfo ? '' : `<p class="text-slate-500 italic">No description, photo or video saved for this exercise yet.</p>`}
+                ${live ? `<button onclick="rh.gotoEx('${live.id}')" class="${BTN}"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Suggested Exercises</button>` : `<p class="text-[10px] text-slate-500 italic">This exercise is no longer in your suggestions list.</p>`}
+              </div>` : ''}
+            </div>`;
+          }).join('')}
         </div>` : ''}
       </div>`;
     }).join('');
@@ -651,13 +684,39 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
   window.rh = {
     pick(g) {
       S.group = g;
+      S.ui.exq = '';
+      const sb = $('rhExSearch'); if (sb) sb.value = '';
       renderCharacterView();
       renderLegend();
       renderPicker();
     },
     viewImg(id) {
-      const e = id ? S.exercises.find(x => x.id === id) : null;
-      openViewer(e ? e.img : S.ui.formImg, e ? e.name : '');
+      if (!id) return openViewer(S.ui.formImg, '');
+      let e = S.exercises.find(x => x.id === id);
+      if (!e || !e.img) {                                   // fall back to the copy stored inside a routine
+        for (const r of S.routines) { e = (r.items || []).find(x => x.id === id && x.img); if (e) break; }
+      }
+      if (e && e.img) openViewer(e.img, e.name);
+    },
+    searchEx(val) {
+      S.ui.exq = val;
+      renderPicker();
+    },
+    toggleRoutineEx(rid, idx) {
+      const k = rid + ':' + idx;
+      S.ui.openRoutineEx[k] = !S.ui.openRoutineEx[k];
+      renderRoutines();
+    },
+    gotoEx(id) {
+      const e = S.exercises.find(x => x.id === id);
+      if (!e) return;
+      S.group = e.group;
+      S.ui.exq = '';
+      const sb = $('rhExSearch'); if (sb) sb.value = '';
+      S.ui.openEx[id] = true;
+      renderCharacterView(); renderLegend(); renderPicker();
+      const card = $('rhPickerCard');
+      if (card) window.scrollTo({ top: card.offsetTop - 20, behavior: 'smooth' });
     },
     closeImg: closeViewer,
     toggleExDetails(id) {
@@ -889,7 +948,7 @@ ankles|Banded Ankle Distraction|2|30|s|20`;
 
       S.exercises = exercises; S.routines = routines; S.sched = sched;
       if (S.draft.id && !routines.some(r => r.id === S.draft.id)) S.draft.id = null;
-      S.ui.editing = undefined; S.ui.formImg = ''; S.ui.openEx = {}; S.ui.openRoutines = {};
+      S.ui.editing = undefined; S.ui.formImg = ''; S.ui.openEx = {}; S.ui.openRoutines = {}; S.ui.openRoutineEx = {};
       saveEx(); saveRoutines(); saveSched(); saveDraft();
       renderAll();
     }
