@@ -14,8 +14,8 @@ let foodLogs = {}; // Format: 'YYYY-MM-DD': [{ id, name, cal, p, c, f, portion, 
 let favourites = [];
 let editingFavouriteId = null;
 let geminiApiKey = '';
-  let GEMINI_PREFERRED_MODEL = 'gemini-3.8-flash';
-  let GEMINI_FALLBACK_MODELS = ['gemini-flash-latest', 'gemini-3.5-flash-lite','gemini-3.1-flash-lite'];
+  let GEMINI_PREFERRED_MODEL = 'gemini-flash-latest';
+  let GEMINI_FALLBACK_MODELS = 'gemini-flash-lite-latest';
   let cachedWorkingGeminiModel = null;
 
     function loadSettings() {
