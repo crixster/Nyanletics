@@ -1,5 +1,6 @@
 // =====================================================================
 // macro-tracker.js — Apex Fitness: Macro Tracker tab
+// refer to https://ai.google.dev/gemini-api/docs/models when AI scanner breaks
 // Owns: currentDate, goals, foodLogs, favourites, geminiApiKey and all
 // Gemini vision-scan / food-entry / favourites UI. This is the ONLY
 // module that reads/writes localStorage today (apex_macro_goals,
@@ -14,9 +15,22 @@ let foodLogs = {}; // Format: 'YYYY-MM-DD': [{ id, name, cal, p, c, f, portion, 
 let favourites = [];
 let editingFavouriteId = null;
 let geminiApiKey = '';
-  let GEMINI_PREFERRED_MODEL = 'gemini-flash-latest';
-  let GEMINI_FALLBACK_MODELS = 'gemini-flash-lite-latest';
+
+  let GEMINI_PREFERRED_MODEL = [
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.5-flash',
+  'gemini-3.1-flash',
+  'gemini-flash-latest'
+];
+  let GEMINI_FALLBACK_MODELS = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-flash-lite-latest'
+  ];
   let cachedWorkingGeminiModel = null;
+
+
 
     function loadSettings() {
       const savedGoals = localStorage.getItem('apex_macro_goals');
