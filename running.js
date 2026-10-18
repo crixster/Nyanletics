@@ -16,33 +16,45 @@
   const apiKey = () => (typeof window.getGeminiApiKey === 'function' ? window.getGeminiApiKey() : '');
   const NUM = 'w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2.5 text-base text-center font-bold text-white tabular-nums focus:outline-none focus:border-emerald-500';
   const LBL = 'text-[11px] text-slate-400 font-medium block mb-1';
+  const PRESETS = [['200 m', 0.2], ['400 m', 0.4], ['800 m', 0.8], ['1 km', 1], ['5K', 5], ['10K', 10], ['Half', 21.0975], ['Marathon', 42.195]];
+  const LOCK_BTN = 'px-2 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5';
   const BTN = 'px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg border border-slate-700 transition text-xs';
 
   // ---------- state ----------
-  // The calculator only stores distance (km) and pace (sec per km).
-  // Time and speed are always derived from those two.
+  // Calculator truth = three full-precision numbers: dist (km), time (sec), pace (sec/km).
+  // Speed is NEVER stored: it is always 3600 / pace, so pace and speed cannot drift apart.
+  // Values are only rounded when written into the input boxes (see fill()).
   const S = {
     ready: false,
     dist: 1,          // km  (base = 1 km)
+    time: 300,        // sec (always dist * pace)
     pace: 300,        // sec / km  (5:00 /km)
-    mode: 'dist',     // when pace/speed is edited, recalc 'dist' (keep time) or 'time' (keep distance)
+    lock: 'none',     // default: no lock. 'none' | 'dist' | 'time' | 'rate' (rate = pace + speed)
+    anchor: 'dist',   // with no lock: which of dist/time was edited last (stays fixed when pace/speed changes)
+    last: null,       // last field the user edited: 'dist' | 'time' | 'pace' | 'speed'
+    out: null,        // fields that edit recalculated (for the info line)
+    busy: false,      // re-entrancy guard, blocks circular updates
     easy: 480,        // sec / km used by Gemini for warm-ups etc. with no stated pace
     text: '',
     result: null,
     helpPinned: false
   };
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ dist: S.dist, pace: S.pace, mode: S.mode, easy: S.easy, text: S.text, result: S.result })); } catch (e) { /* ignore */ } };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ dist: S.dist, pace: S.pace, lock: S.lock, easy: S.easy, text: S.text, result: S.result })); } catch (e) { /* ignore */ } };
   const restore = () => {
     try {
       const v = JSON.parse(localStorage.getItem(KEY));
       if (!v) return;
       if (v.dist > 0) S.dist = v.dist;
       if (v.pace > 0) S.pace = v.pace;
-      if (v.mode === 'time' || v.mode === 'dist') S.mode = v.mode;
+      if (v.lock === 'dist' || v.lock === 'time' || v.lock === 'rate' || v.lock === 'none') S.lock = v.lock;
+      // migrate the old "pace/speed edit recalculates X" toggle: 'dist' kept time, 'time' kept distance
+      else if (v.mode === 'dist') S.lock = 'time';
+      else if (v.mode === 'time') S.lock = 'dist';
       if (v.easy > 0) S.easy = v.easy;
       if (typeof v.text === 'string') S.text = v.text;
       if (v.result && v.result.segments) S.result = v.result;
     } catch (e) { /* ignore */ }
+    S.time = S.dist * S.pace;
   };
 
   // ---------- formatting ----------
@@ -63,7 +75,8 @@
 
   // ---------- skeleton ----------
   function skeleton() {
-    const modeBtn = (k, label) => `<button id="rnMode_${k}" onclick="rn.setMode('${k}')" class="flex-1 px-2 py-1.5 rounded-md text-[11px] font-semibold transition">${label}</button>`;
+    const lockBtn = (k, label, ic) => `<button id="rnLock_${k}" type="button" onclick="rn.setLock('${k}')" aria-pressed="false" class="${LOCK_BTN}"><i class="fa-solid ${ic}"></i>${label}</button>`;
+    const lk = f => `<i id="rnLk_${f}" class="hidden fa-solid fa-lock text-indigo-300 text-[10px] ml-1" title="Locked"></i>`;
     return `
     <div class="glass-card rounded-2xl p-4 shadow-xl border border-emerald-500/20 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2"><span class="text-lg">🏃</span>
@@ -75,36 +88,38 @@
     <div id="rnCalcCard" class="glass-card rounded-2xl p-4 shadow-xl border border-indigo-500/20">
       <h2 class="text-base font-bold text-slate-200 mb-3">Pace Calculator</h2>
 
+      <div class="mb-3">
+        <span class="${LBL}">Lock (stays fixed while you edit the others)</span>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-950 border border-slate-800 rounded-xl p-1">${lockBtn('none', 'No lock', 'fa-lock-open')}${lockBtn('dist', 'Distance', 'fa-lock')}${lockBtn('time', 'Time', 'fa-lock')}${lockBtn('rate', 'Pace/Speed', 'fa-lock')}</div>
+        <p id="rnLockInfo" class="text-[11px] text-slate-400 mt-1.5"></p>
+      </div>
+
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="${LBL}" for="rnDist">Distance (km)</label>
+        <div><label class="${LBL}" for="rnDist">Distance (km) ${lk('dist')}</label>
           <input id="rnDist" type="number" inputmode="decimal" step="any" min="0" oninput="rn.onDist()" onblur="rn.norm()" class="${NUM}"></div>
-        <div><label class="${LBL}" for="rnSpeed">Speed (km/h)</label>
+        <div><label class="${LBL}" for="rnSpeed">Speed (km/h) ${lk('speed')}</label>
           <input id="rnSpeed" type="number" inputmode="decimal" step="any" min="0" oninput="rn.onSpeed()" onblur="rn.norm()" class="${NUM}"></div>
       </div>
 
       <div class="flex flex-wrap gap-1.5 mt-2">
-        ${[['1 km', 1], ['5K', 5], ['10K', 10], ['Half', 21.0975], ['Marathon', 42.195]].map(p =>
-          `<button onclick="rn.preset(${p[1]})" class="${BTN}">${p[0]}</button>`).join('')}
+        ${PRESETS.map(p =>
+          `<button id="rnPre_${p[1]}" type="button" onclick="rn.preset(${p[1]})" class="${BTN}">${p[0]}</button>`).join('')}
       </div>
 
-      <div class="mt-3"><label class="${LBL}">Time (h : min : sec)</label>
+      <div class="mt-3"><label class="${LBL}">Time (h : min : sec) ${lk('time')}</label>
         <div class="grid grid-cols-3 gap-2">
           <input id="rnH" type="number" inputmode="numeric" min="0" placeholder="h" aria-label="Hours" oninput="rn.onTime()" onblur="rn.norm()" class="${NUM}">
           <input id="rnM" type="number" inputmode="numeric" min="0" placeholder="min" aria-label="Minutes" oninput="rn.onTime()" onblur="rn.norm()" class="${NUM}">
           <input id="rnS" type="number" inputmode="decimal" min="0" placeholder="sec" aria-label="Seconds" oninput="rn.onTime()" onblur="rn.norm()" class="${NUM}">
         </div></div>
 
-      <div class="mt-3"><label class="${LBL}">Pace (min : sec per km)</label>
+      <div class="mt-3"><label class="${LBL}">Pace (min : sec per km) ${lk('pace')}</label>
         <div class="grid grid-cols-2 gap-2">
           <input id="rnPM" type="number" inputmode="numeric" min="0" placeholder="min" aria-label="Pace minutes" oninput="rn.onPace()" onblur="rn.norm()" class="${NUM}">
           <input id="rnPS" type="number" inputmode="numeric" min="0" placeholder="sec" aria-label="Pace seconds" oninput="rn.onPace()" onblur="rn.norm()" class="${NUM}">
         </div></div>
 
-      <div class="mt-3 flex items-center gap-2">
-        <span class="text-[11px] text-slate-400 flex-shrink-0">Changing pace or speed recalculates</span>
-        <div class="flex flex-1 bg-slate-900 border border-slate-700 rounded-lg p-0.5">${modeBtn('dist', 'Distance')}${modeBtn('time', 'Time')}</div>
-      </div>
-      <p class="text-[11px] text-slate-500 mt-2">Changing distance updates time. Changing time updates distance. Pace and speed always stay in sync.</p>
+      <p class="text-[11px] text-slate-500 mt-3">Locked fields are greyed out. Pick another lock, or No lock, to edit them. Pace and speed always stay in sync.</p>
     </div>
 
     <div id="rnWorkoutCard" class="glass-card rounded-2xl p-4 shadow-xl border border-emerald-500/20">
@@ -171,51 +186,107 @@
   window.initRunningUI = function () { if (ensure()) window.renderRunning(); };
   window.renderRunning = function () {
     if (!ensure()) return;
-    fill(null); renderMode(); renderResult();
+    fill(null); renderLock(); renderResult();
   };
 
   // ---------- calculator ----------
-  function fill(src) {
-    if (src !== 'dist') $('rnDist').value = fmtNum(S.dist, 3);
-    if (src !== 'time') {
-      const t = Math.round(S.dist * S.pace);
+  // Which lock "owns" each field. Editing a field that belongs to the active lock is blocked.
+  const LOCK_OF = { dist: 'dist', time: 'time', pace: 'rate', speed: 'rate' };
+  const INPUTS = { dist: ['rnDist'], time: ['rnH', 'rnM', 'rnS'], pace: ['rnPM', 'rnPS'], speed: ['rnSpeed'] };
+  const FIELD_NAME = { dist: 'Distance', time: 'Time', pace: 'Pace', speed: 'Speed' };
+  const LOCK_NAME = { dist: 'Distance', time: 'Time', rate: 'Pace/Speed' };
+  const LOCK_INFO = {
+    dist: 'Edit Time to update Pace and Speed. Edit Pace or Speed to update Time.',
+    time: 'Edit Distance to update Pace and Speed. Edit Pace or Speed to update Distance.',
+    rate: 'Edit Distance to update Time. Edit Time to update Distance.',
+    none: 'No lock: Distance edit updates Time, Time edit updates Distance. Pace or Speed edit updates whichever of those two you did not edit last.'
+  };
+  const LOCKED_CLS = '!border-indigo-500/60 !text-indigo-200 opacity-60 cursor-not-allowed';
+
+  // Write ONLY the listed fields into the inputs (null = all). This is the only place rounding happens.
+  function fill(fields) {
+    const has = f => !fields || fields.indexOf(f) >= 0;
+    if (has('dist')) $('rnDist').value = fmtNum(S.dist, 3);
+    if (has('time')) {
+      const t = Math.round(S.time);
       $('rnH').value = Math.floor(t / 3600);
       $('rnM').value = Math.floor((t % 3600) / 60);
       $('rnS').value = t % 60;
     }
-    if (src !== 'pace') {
+    if (has('pace')) {
       const p = Math.round(S.pace);
       $('rnPM').value = Math.floor(p / 60);
       $('rnPS').value = p % 60;
     }
-    if (src !== 'speed') $('rnSpeed').value = fmtNum(3600 / S.pace, 2);
+    if (has('speed')) $('rnSpeed').value = fmtNum(3600 / S.pace, 2);
   }
-  function renderMode() {
-    ['dist', 'time'].forEach(k => {
-      $('rnMode_' + k).className = 'flex-1 px-2 py-1.5 rounded-md text-[11px] font-semibold transition ' +
-        (S.mode === k ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:text-white');
+
+  function renderLock() {
+    ['none', 'dist', 'time', 'rate'].forEach(k => {
+      const b = $('rnLock_' + k), on = S.lock === k;
+      b.className = LOCK_BTN + ' ' + (on ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-200 hover:text-white hover:bg-slate-800/60');
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
+    Object.keys(INPUTS).forEach(f => {
+      const locked = LOCK_OF[f] === S.lock;
+      INPUTS[f].forEach(id => { const el = $(id); el.disabled = locked; el.className = NUM + (locked ? ' ' + LOCKED_CLS : ''); });
+      $('rnLk_' + f).classList.toggle('hidden', !locked);
+    });
+    PRESETS.forEach(([, km]) => { const b = $('rnPre_' + km); if (b) { b.disabled = S.lock === 'dist'; b.classList.toggle('opacity-40', S.lock === 'dist'); } });
+    renderLockInfo();
   }
-  function applyRate(p) {
-    if (S.mode === 'dist') { const t = S.dist * S.pace; S.pace = p; S.dist = t / p; }
-    else S.pace = p;
+  function renderLockInfo() {
+    const el = $('rnLockInfo'); if (!el) return;
+    let h = S.lock === 'none' ? `<span class="text-indigo-300 font-semibold"><i class="fa-solid fa-lock-open mr-1"></i>No lock.</span> ${LOCK_INFO.none}`
+      : `<span class="text-indigo-300 font-semibold"><i class="fa-solid fa-lock mr-1"></i>${LOCK_NAME[S.lock]} locked.</span> ${LOCK_INFO[S.lock]}`;
+    if (S.last) h += `<br><span class="text-slate-500">Last edited: ${FIELD_NAME[S.last]}` +
+      (S.out ? ' → recalculated ' + S.out.map(f => FIELD_NAME[f]).join(' & ') : '') + '</span>';
+    el.innerHTML = h;   // static strings only, no user input
   }
-  const done = src => { fill(src); save(); };
+
+  // Single entry point for every user edit. v is already in internal units:
+  // dist = km, time = sec, pace = sec/km, speed = km/h.
+  // Only fields that depend on the edit (given the active lock) are recalculated and redrawn.
+  // The edited field itself is never rewritten while typing, which also prevents update loops.
+  function edit(field, v) {
+    if (S.busy) return false;
+    if (!(v > 0) || !isFinite(v)) return false;
+    if (LOCK_OF[field] === S.lock) { fill(null); return false; }   // locked field: ignore, restore display
+    S.busy = true;
+    try {
+      let out;
+      if (field === 'dist') {
+        S.dist = v; S.anchor = 'dist';
+        if (S.lock === 'time') { S.pace = S.time / S.dist; out = ['pace', 'speed']; }   // lock time
+        else { S.time = S.dist * S.pace; out = ['time']; }                              // lock rate / unlocked
+      } else if (field === 'time') {
+        S.time = v; S.anchor = 'time';
+        if (S.lock === 'dist') { S.pace = S.time / S.dist; out = ['pace', 'speed']; }   // lock dist
+        else { S.dist = S.time / S.pace; out = ['dist']; }                              // lock rate
+      } else {                                                                          // pace or speed
+        S.pace = field === 'speed' ? 3600 / v : v;
+        const keepDist = S.lock === 'dist' || (S.lock === 'none' && S.anchor === 'dist');
+        if (keepDist) { S.time = S.dist * S.pace; out = ['time']; }
+        else { S.dist = S.time / S.pace; out = ['dist']; }                              // lock time / unlocked
+        out.push(field === 'speed' ? 'pace' : 'speed');                                 // keep the twin in sync
+      }
+      S.last = field; S.out = out;
+      fill(out); renderLockInfo(); save();
+      return true;
+    } finally { S.busy = false; }
+  }
 
   const rn = window.rn = {
-    onDist() { const d = val('rnDist'); if (!(d > 0)) return; S.dist = d; done('dist'); },
-    onTime() {
-      const t = val('rnH') * 3600 + val('rnM') * 60 + val('rnS');
-      if (!(t > 0)) return; S.dist = t / S.pace; done('time');
+    onDist() { edit('dist', val('rnDist')); },
+    onTime() { edit('time', val('rnH') * 3600 + val('rnM') * 60 + val('rnS')); },
+    onPace() { edit('pace', val('rnPM') * 60 + val('rnPS')); },
+    onSpeed() { edit('speed', val('rnSpeed')); },
+    norm() { if (!S.busy) fill(null); },          // tidy fields (e.g. 75 min -> 1:15:00) when leaving one
+    preset(km) {
+      if (S.lock === 'dist') return toast('Distance is locked');
+      if (edit('dist', km)) fill(['dist']);
     },
-    onPace() {
-      const p = val('rnPM') * 60 + val('rnPS');
-      if (!(p > 0)) return; applyRate(p); done('pace');
-    },
-    onSpeed() { const k = val('rnSpeed'); if (!(k > 0)) return; applyRate(3600 / k); done('speed'); },
-    norm() { fill(null); },                       // tidy fields (e.g. 75 min -> 1:15:00) when leaving one
-    preset(km) { S.dist = km; done(null); },
-    setMode(m) { S.mode = m; renderMode(); save(); },
+    setLock(k) { if (k !== 'dist' && k !== 'time' && k !== 'rate' && k !== 'none') return; S.lock = k; renderLock(); save(); },
 
     // ---------- workout estimator ----------
     onText(v) { S.text = v; save(); },
@@ -264,7 +335,8 @@
       const r = S.result; if (!r) return;
       const d = (r.totals.dMin + r.totals.dMax) / 2, t = (r.totals.tMin + r.totals.tMax) / 2;
       if (!(d > 0 && t > 0)) return;
-      S.dist = d; S.pace = t / d; fill(null); save(); toast('Loaded into calculator');
+      S.dist = d; S.time = t; S.pace = t / d; S.last = null; S.out = null;   // explicit load: overrides locks
+      fill(null); renderLockInfo(); save(); toast('Loaded into calculator');
       $('rnCalcCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
