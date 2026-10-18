@@ -2,7 +2,7 @@
 // lifting-log.js — Nyanletics: Lifting Log tab
 // Owns: exercises[], oneRMManualOverrides, collapsedGroupsMap, the 1RM
 // card, the weight-suggestions card, and the exercise log/edit/rename UI.
-// Calls out to plate-loader.js's calculateFromTarget() in ONE place
+// Calls out to plate-loader.js (setPlateViewMode + calculateFromTarget) in ONE place
 // (loadSuggestedWeightToPlateCalculator) — that's the app's only
 // intentional Lifting Log -> Plate Loader coupling; keep it that way
 // rather than adding new cross-calls.
@@ -348,6 +348,12 @@ function saveLifting() {
     }
 
     function loadSuggestedWeightToPlateCalculator(targetKg) {
+      // Suggested weights are barbell loads. If the Plate Loader is on the Sled
+      // view, switch back first. This must run BEFORE the inputs below are set:
+      // switching views restores that view's saved target, which would otherwise
+      // overwrite the value we're about to write.
+      if (typeof setPlateViewMode === 'function') setPlateViewMode('barbell');
+
       const targetEl = document.getElementById('targetWeight');
       const unitEl = document.getElementById('loaderUnit');
       if (unitEl) unitEl.value = 'kg';

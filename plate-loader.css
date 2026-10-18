@@ -18,3 +18,13 @@
 .plate-btn-touch {
   touch-action: manipulation;
 }
+
+/* Sled view: plates are SVG <g> groups stacked on the loading pin. Brightening
+   (rather than translate/scale like .plate-hover) keeps the stack aligned. */
+.sled-plate {
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.sled-plate:hover {
+  filter: brightness(1.18) drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
+}

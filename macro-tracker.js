@@ -647,7 +647,7 @@ let geminiApiKey = '';
     }
 
     async function callGeminiVision(apiKey, payload) {
-      const candidates = [GEMINI_PREFERRED_MODEL, ...GEMINI_FALLBACK_MODELS];
+      const candidates = [...GEMINI_PREFERRED_MODEL, ...GEMINI_FALLBACK_MODELS];
       if (cachedWorkingGeminiModel && !candidates.includes(cachedWorkingGeminiModel)) {
         candidates.unshift(cachedWorkingGeminiModel);
       }
@@ -717,7 +717,7 @@ let geminiApiKey = '';
 
       // Starting a new scan always resets any error left visible from a
       // previous attempt.
-      setScanStatus(`Connecting to Gemini (${cachedWorkingGeminiModel || GEMINI_PREFERRED_MODEL})...`, false);
+      setScanStatus(`Connecting to Gemini (${cachedWorkingGeminiModel || GEMINI_PREFERRED_MODEL[0]})...`, false);
 
       try {
         const reader = new FileReader();
@@ -742,7 +742,7 @@ let geminiApiKey = '';
               }]
             };
 
-            setScanStatus(`Analyzing image with ${cachedWorkingGeminiModel || GEMINI_PREFERRED_MODEL}...`, false);
+            setScanStatus(`Analyzing image with ${cachedWorkingGeminiModel || GEMINI_PREFERRED_MODEL[0]}...`, false);
 
             const { modelId, data } = await callGeminiVision(geminiApiKey, payload);
             setScanStatus(`Analyzing image with ${modelId}...`, false);
@@ -779,6 +779,78 @@ let geminiApiKey = '';
         reader.readAsDataURL(file);
       } catch (err) {
         setScanStatus(`AI Scan failed: ${err.message || 'Unknown error'}`, true);
+      }
+    }
+
+
+    // Text-based macro lookup: user types a food description and Gemini
+    // returns estimated macros, which pre-fill the Add Food modal.
+    async function handleTextScan() {
+      const inputEl = document.getElementById('food-text-input');
+      const btn = document.getElementById('text-scan-btn');
+      const query = (inputEl?.value || '').trim();
+
+      if (!query) {
+        showToast('Type a food or meal description first');
+        inputEl?.focus();
+        return;
+      }
+
+      if (!getGeminiApiKey()) {
+        showToast('Please add your Gemini API key in Settings first!');
+        switchTab('settings');
+        return;
+      }
+      const apiKey = getGeminiApiKey();
+
+      if (btn) { btn.disabled = true; btn.classList.add('opacity-60'); }
+      setScanStatus(`Searching macros with ${cachedWorkingGeminiModel || GEMINI_PREFERRED_MODEL[0]}...`, false);
+
+      try {
+        const promptText =
+          `Estimate the nutrition facts for this food or meal description: "${query}". ` +
+          `If quantities are given (e.g. "2 eggs"), return the TOTAL for everything described; ` +
+          `if no quantity is given, assume one typical serving. ` +
+          `Return ONLY a JSON object with keys: name (short descriptive string including the quantity), ` +
+          `cal (number, kcal), p (number, grams protein), c (number, grams carbs), f (number, grams fat). ` +
+          `Do not include markdown code block formatting or any other text.`;
+
+        const payload = {
+          contents: [{ parts: [{ text: promptText }] }],
+          generationConfig: { responseMimeType: 'application/json' }
+        };
+
+        const { modelId, data } = await callGeminiVision(apiKey, payload);
+
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        let parsed;
+        try {
+          parsed = JSON.parse(cleanText);
+          if (Array.isArray(parsed)) parsed = parsed[0];
+        } catch (err) {
+          throw new Error(`${modelId} returned a response that could not be parsed as JSON`);
+        }
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error(`${modelId} returned an unexpected response`);
+        }
+
+        document.getElementById('scan-status')?.classList.add('hidden');
+
+        openFormModal();
+        document.getElementById('food-name-input').value = parsed.name || query;
+        document.getElementById('food-cal-input').value = Math.round(Number(parsed.cal) || 0);
+        document.getElementById('food-p-input').value = Math.round((Number(parsed.p) || 0) * 10) / 10;
+        document.getElementById('food-c-input').value = Math.round((Number(parsed.c) || 0) * 10) / 10;
+        document.getElementById('food-f-input').value = Math.round((Number(parsed.f) || 0) * 10) / 10;
+
+        if (inputEl) inputEl.value = '';
+        showToast(`Macros estimated with ${modelId}! Verify values and save.`);
+      } catch (err) {
+        setScanStatus(`AI Search failed: ${err.message || 'Unknown error'}`, true);
+      } finally {
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-60'); }
       }
     }
 
@@ -820,3 +892,4 @@ window.findWorkingGeminiModel = findWorkingGeminiModel;
 window.callGeminiVision = callGeminiVision;
 window.setScanStatus = setScanStatus;
 window.handleImageScan = handleImageScan;
+window.handleTextScan = handleTextScan;

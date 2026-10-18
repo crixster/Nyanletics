@@ -45,9 +45,17 @@
       steps: [],
       stepIdx: 0,
       remaining: 0,
-      timerId: null
+      timerId: null,
+      // Get-ready countdown before the first interval step (0 = off)
+      prepSecs: 10,
+      prepRemaining: 0,
+      inPrep: false,
+      started: false
     }
   };
+
+  // Metronome (shared by Interval, Countdown and Stopwatch): 1 click per second
+  const metro = { on: false, timerId: null };
 
   const $ = id => document.getElementById(id);
 
@@ -190,6 +198,75 @@
       console.warn('Audio play error', e);
     }
   }
+  // Short woodblock-style tick, distinct from the countdown beeps
+  function playClick() {
+    const dot = $('metroDot');
+    if (dot) {
+      dot.classList.add('scale-150', 'bg-emerald-300');
+      setTimeout(() => dot.classList.remove('scale-150', 'bg-emerald-300'), 90);
+    }
+    if (isMuted || !audioCtx) return;
+    try {
+      if (audioCtx.state !== 'running') audioCtx.resume();
+      const t = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1000, t);
+      gain.gain.setValueAtTime(0.5, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t);
+      osc.stop(t + 0.07);
+    } catch (e) {
+      console.warn('Metronome click error', e);
+    }
+  }
+
+  // Metronome is independent of the timers: once switched on it keeps
+  // beating every second until switched off. syncMetronome is safe to call
+  // repeatedly (it only starts/stops the loop when the state changes).
+  function syncMetronome() {
+    const want = metro.on;
+    if (want && !metro.timerId) {
+      playClick();
+      metro.timerId = setInterval(playClick, 1000);
+    } else if (!want && metro.timerId) {
+      clearInterval(metro.timerId);
+      metro.timerId = null;
+    }
+  }
+
+  function toggleMetronome() {
+    metro.on = !metro.on;
+    if (metro.on) unlockAudio();
+    renderTimerUI();
+  }
+
+  // Beep for the get-ready countdown: every second from 10 down to 1
+  function prepSound(n) {
+    if (n >= 1 && n <= 10) playBeep(n <= 3 ? 900 : 750, 0.1);
+  }
+
+  function renderMetronome() {
+    return `
+      <div class="flex items-center justify-between gap-3 bg-slate-900/60 border ${metro.on ? 'border-emerald-500/40' : 'border-slate-800'} rounded-xl px-3 py-2.5 text-left transition-colors">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="metroDot" class="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-transform duration-75 ${metro.on ? 'bg-emerald-500' : 'bg-slate-600'}"></span>
+          <div class="min-w-0">
+            <div class="text-xs font-bold text-slate-200">Metronome</div>
+            <div class="text-[10px] text-slate-500">1 beat per second · plays on its own until switched off</div>
+          </div>
+        </div>
+        <button onclick="window.nyanTimer.toggleMetronome()" role="switch" aria-checked="${metro.on}" title="Toggle metronome"
+          class="relative w-11 h-6 rounded-full flex-shrink-0 transition-colors ${metro.on ? 'bg-emerald-500' : 'bg-slate-700'}">
+          <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${metro.on ? 'translate-x-5' : ''}"></span>
+        </button>
+      </div>
+    `;
+  }
+
   function fmtTime(ms) {
     const totalSecs = Math.floor(ms / 1000);
     const m = Math.floor(totalSecs / 60).toString().padStart(2, '0');
@@ -204,9 +281,9 @@
     return `${m}:${s}`;
   }
 
-function toggleMute() {
+  function toggleMute() {
     isMuted = !isMuted;
-    if (!isMuted) unlockAudio();  // <-- add
+    if (!isMuted) unlockAudio();
     renderTimerUI();
   }
 
@@ -261,7 +338,7 @@ function toggleMute() {
 
   function renderTimerUI() {
     const root = $('timerTab');
-    if (!root) return;
+    if (!root) { syncMetronome(); return; }
 
     const isRunning = (mode === 'stopwatch' && state.stopwatch.running) ||
                       (mode === 'countdown' && state.countdown.running) ||
@@ -301,11 +378,14 @@ function toggleMute() {
           </div>
         </div>
 
+        ${renderMetronome()}
+
         <div id="timerDisplayArea">
           ${renderModeContent(isRunning)}
         </div>
       </div>
     `;
+    syncMetronome();
   }
 
   function renderModeContent(isRunning) {
@@ -433,11 +513,15 @@ function toggleMute() {
 
     const totalStepsCount = it.blockSteps.length;
 
-    const badgeStyle = {
-      work: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-      rest: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-      round_rest: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-    }[curStep.type] || 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    const inPrep = it.inPrep;
+    const badgeStyle = inPrep
+      ? 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+      : ({
+          work: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+          rest: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+          round_rest: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+        }[curStep.type] || 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30');
+    const shownSecs = inPrep ? it.prepRemaining : it.remaining;
 
     return `
       <div class="space-y-4 text-center">
@@ -446,6 +530,18 @@ function toggleMute() {
           <div class="flex bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-center gap-1 max-w-xs mx-auto">
             <button onclick="window.nyanTimer.setIntervalMode('simple')" class="flex-1 py-1.5 text-[11px] font-bold rounded-lg ${it.mode === 'simple' ? 'bg-indigo-600 text-white' : 'text-slate-400'} transition">Simple Interval</button>
             <button onclick="window.nyanTimer.setIntervalMode('complex')" class="flex-1 py-1.5 text-[11px] font-bold rounded-lg ${it.mode === 'complex' ? 'bg-indigo-600 text-white' : 'text-slate-400'} transition">Multi-Block Interval</button>
+          </div>
+
+          <!-- Get Ready Countdown moved right below mode selector tabs -->
+          <div class="flex items-center justify-between gap-3 max-w-md mx-auto bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs text-left">
+            <div class="min-w-0">
+              <div class="text-[11px] font-bold text-sky-400">Get Ready Countdown</div>
+              <div class="text-[10px] text-slate-500">Seconds to prepare before the interval starts (0 = off). Beeps from 10s.</div>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <input type="number" inputmode="numeric" min="0" max="300" value="${it.prepSecs}" onchange="window.nyanTimer.setPrepSecs(this.value)" class="w-14 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center text-white font-medium">
+              <span class="text-[10px] text-slate-500">sec</span>
+            </div>
           </div>
 
           ${it.mode === 'simple' ? `
@@ -499,32 +595,35 @@ function toggleMute() {
                   </button>
                 </div>
 
-                <div class="space-y-1.5 max-h-[380px] overflow-y-auto pr-1">
+                <div class="space-y-1.5 max-h-[380px] overflow-y-auto overflow-x-hidden pr-1">
                   ${it.blockSteps.map((s, idx) => {
                     const sm = Math.floor(s.secs / 60), ss = s.secs % 60;
                     const isWork = s.type === 'work';
+                    const numCls = 'w-9 bg-slate-900 border border-slate-700 rounded px-0.5 py-1 text-center text-white font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
                     return `
-                      <div class="flex items-center justify-between gap-1.5 bg-slate-950/80 p-2 rounded-lg border border-slate-800">
-                        <div class="flex flex-col gap-0.5">
-                          <button onclick="window.nyanTimer.moveBlockStep(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="text-slate-400 hover:text-white disabled:opacity-20 text-[10px] px-1" title="Move Up">▲</button>
-                          <button onclick="window.nyanTimer.moveBlockStep(${idx}, 1)" ${idx === it.blockSteps.length - 1 ? 'disabled' : ''} class="text-slate-400 hover:text-white disabled:opacity-20 text-[10px] px-1" title="Move Down">▼</button>
+                      <div class="flex items-center gap-1.5 bg-slate-950/80 p-2 rounded-lg border border-slate-800">
+                        <div class="flex flex-col gap-0.5 flex-shrink-0">
+                          <button onclick="window.nyanTimer.moveBlockStep(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="text-slate-400 hover:text-white disabled:opacity-20 text-[10px] px-0.5 leading-none" title="Move Up">▲</button>
+                          <button onclick="window.nyanTimer.moveBlockStep(${idx}, 1)" ${idx === it.blockSteps.length - 1 ? 'disabled' : ''} class="text-slate-400 hover:text-white disabled:opacity-20 text-[10px] px-0.5 leading-none" title="Move Down">▼</button>
+                        </div>
+
+                        <!-- Time (first, so it's always visible) -->
+                        <div class="flex items-center gap-0.5 text-[11px] flex-shrink-0">
+                          <input type="number" inputmode="numeric" min="0" value="${sm}" onchange="window.nyanTimer.updateStepSecs(${idx}, 'min', this.value)" class="${numCls}" title="Minutes">
+                          <span class="text-slate-500 font-bold">:</span>
+                          <input type="number" inputmode="numeric" min="0" max="59" value="${ss}" onchange="window.nyanTimer.updateStepSecs(${idx}, 'sec', this.value)" class="${numCls}" title="Seconds">
                         </div>
 
                         <!-- Work / Rest Selector Dropdown -->
-                        <select onchange="window.nyanTimer.updateStepType(${idx}, this.value)" class="text-[10px] font-extrabold uppercase px-2 py-1 rounded bg-slate-900 border border-slate-700 ${isWork ? 'text-emerald-400' : 'text-amber-400'} flex-shrink-0 cursor-pointer">
+                        <select onchange="window.nyanTimer.updateStepType(${idx}, this.value)" class="text-[10px] font-extrabold uppercase px-1 py-1 rounded bg-slate-900 border border-slate-700 ${isWork ? 'text-emerald-400' : 'text-amber-400'} flex-shrink-0 cursor-pointer">
                           <option value="work" ${isWork ? 'selected' : ''}>Work</option>
                           <option value="rest" ${!isWork ? 'selected' : ''}>Rest</option>
                         </select>
-                        
-                        <input type="text" value="${s.label}" placeholder="Description" onchange="window.nyanTimer.updateStepLabel(${idx}, this.value)" class="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white font-medium">
 
-                        <div class="flex items-center gap-1 text-[11px]">
-                          <input type="number" min="0" value="${sm}" onchange="window.nyanTimer.updateStepSecs(${idx}, 'min', this.value)" class="w-11 bg-slate-900 border border-slate-700 rounded px-1 py-1 text-center text-white font-medium" title="Minutes">
-                          <span class="text-slate-500 font-bold">:</span>
-                          <input type="number" min="0" max="59" value="${ss}" onchange="window.nyanTimer.updateStepSecs(${idx}, 'sec', this.value)" class="w-11 bg-slate-900 border border-slate-700 rounded px-1 py-1 text-center text-white font-medium" title="Seconds">
-                        </div>
+                        <!-- Label (takes remaining space, never forces sideways scroll) -->
+                        <input type="text" value="${s.label}" maxlength="24" placeholder="Label" onchange="window.nyanTimer.updateStepLabel(${idx}, this.value)" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-xs text-white font-medium">
 
-                        <button onclick="window.nyanTimer.removeBlockStep(${idx})" ${it.blockSteps.length <= 1 ? 'disabled' : ''} class="text-slate-500 hover:text-rose-400 p-1 disabled:opacity-20 transition" title="Delete Step">
+                        <button onclick="window.nyanTimer.removeBlockStep(${idx})" ${it.blockSteps.length <= 1 ? 'disabled' : ''} class="text-slate-500 hover:text-rose-400 px-0.5 disabled:opacity-20 transition flex-shrink-0" title="Delete Step">
                           <i class="fa-solid fa-xmark text-xs"></i>
                         </button>
                       </div>
@@ -533,17 +632,18 @@ function toggleMute() {
                 </div>
               </div>
             </div>
-          `}` : ''}
+          `}
+        ` : ''}
 
         <!-- Active Timer Display with Side Skip Button when Running -->
         <div class="py-1">
           <span class="inline-block px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider border ${badgeStyle}">
-            ${curStep.label} — Round ${curStep.round}/${curStep.totalRounds}
+            ${inPrep ? 'GET READY' : `${curStep.label} — Round ${curStep.round}/${curStep.totalRounds}`}
           </span>
           
           <div class="flex items-center justify-center gap-4 my-2">
-            <div class="${isRunning ? 'text-7xl sm:text-8xl py-4' : 'text-6xl my-2'} font-black font-mono text-indigo-400 drop-shadow-lg transition-all">
-              ${fmtSecs(it.remaining)}
+            <div class="${isRunning ? 'text-7xl sm:text-8xl py-4' : 'text-6xl my-2'} font-black font-mono ${inPrep ? 'text-sky-400' : 'text-indigo-400'} drop-shadow-lg transition-all">
+              ${fmtSecs(shownSecs)}
             </div>
             ${it.running ? `
               <button onclick="window.nyanTimer.skipInterval()" class="px-5 py-5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-lg transition flex flex-col items-center justify-center gap-1 flex-shrink-0 animate-pulse" title="Skip to Next Interval">
@@ -553,7 +653,11 @@ function toggleMute() {
             ` : ''}
           </div>
 
-          ${nextStep ? `
+          ${inPrep ? `
+            <div class="text-[11px] text-slate-400 font-medium">
+              Starts with: <span class="text-slate-200 font-bold">${curStep.label}</span> (${fmtSecs(curStep.secs || 0)})
+            </div>
+          ` : nextStep ? `
             <div class="text-[11px] text-slate-400 font-medium">
               Next: <span class="text-slate-200 font-bold">${nextStep.label}</span> (${fmtSecs(nextStep.secs)})
             </div>
@@ -579,6 +683,7 @@ function toggleMute() {
     setMode: setTimerMode,
     toggleMute: toggleMute,
     toggleLandscape: toggleLandscape,
+    toggleMetronome: toggleMetronome,
 
     confirmReset(type) {
       if (confirm('Are you sure you want to reset the timer?')) {
@@ -681,6 +786,10 @@ function toggleMute() {
       state.interval.mode = m;
       this.resetInterval();
     },
+    setPrepSecs(val) {
+      state.interval.prepSecs = Math.min(300, Math.max(0, parseInt(val) || 0));
+      this.resetInterval();
+    },
     updateSimpleCfg(field, val) {
       const it = state.interval;
       let wM = Math.floor(it.simpleWorkSecs / 60), wS = it.simpleWorkSecs % 60;
@@ -768,6 +877,14 @@ function toggleMute() {
     skipInterval() {
       unlockAudio();
       const it = state.interval;
+      if (it.inPrep) {
+        // Skip the get-ready countdown and go straight to the first step
+        it.inPrep = false;
+        it.started = true;
+        playBeep(1200, 0.35);
+        renderTimerUI();
+        return;
+      }
       if (!it.steps.length) return;
       it.stepIdx++;
       if (it.stepIdx >= it.steps.length) {
@@ -787,7 +904,31 @@ function toggleMute() {
       if (it.running) {
         if (!it.steps.length) it.steps = buildIntervalSteps();
 
+        // Fresh start: run the get-ready countdown first (if set)
+        if (!it.started && !it.inPrep) {
+          if (it.prepSecs > 0) {
+            it.inPrep = true;
+            it.prepRemaining = it.prepSecs;
+            prepSound(it.prepRemaining);
+          } else {
+            it.started = true;
+          }
+        }
+
         it.timerId = setInterval(() => {
+          if (it.inPrep) {
+            it.prepRemaining--;
+            if (it.prepRemaining > 0) {
+              prepSound(it.prepRemaining);
+            } else {
+              playBeep(1200, 0.35); // GO!
+              it.inPrep = false;
+              it.started = true;
+            }
+            renderTimerUI();
+            return;
+          }
+
           it.remaining--;
 
           if (it.remaining <= 10 && it.remaining > 0) {
@@ -817,6 +958,9 @@ function toggleMute() {
       const it = state.interval;
       clearInterval(it.timerId);
       it.running = false;
+      it.inPrep = false;
+      it.started = false;
+      it.prepRemaining = 0;
       it.stepIdx = 0;
       it.steps = buildIntervalSteps();
       it.remaining = it.steps[0] ? it.steps[0].secs : 0;

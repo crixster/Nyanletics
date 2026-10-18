@@ -148,6 +148,7 @@ const inactiveClass = "w-full py-2.5 px-2 text-xs font-semibold rounded-xl trans
     settingsTab?.classList.remove('hidden');
     if (tabBtnSettings) tabBtnSettings.className = activeClass.replace('w-full', 'col-span-3 w-full');
     if (typeof renderSettings === 'function') renderSettings();
+    if (typeof renderPlateSettings === 'function') renderPlateSettings();
   }
 }
 
