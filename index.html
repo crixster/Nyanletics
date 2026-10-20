@@ -753,6 +753,15 @@ class="text-emerald-400 underline">Create Key in Google AI Studio</a>
         <span class="text-slate-300 font-semibold">Rehab</span>
         <button onclick="csvIO.exportRehab()" class="px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700">Export</button>
         <button onclick="csvIO.importRehab()" class="px-3 py-1.5 bg-indigo-600 rounded-lg">Import</button>
+      
+        <span class="text-slate-300 font-semibold">Progress (body)</span>
+        <button onclick="csvIO.exportProgress()" class="px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700">Export</button>
+        <button onclick="csvIO.importProgress()" class="px-3 py-1.5 bg-indigo-600 rounded-lg">Import</button>
+      
+                <span class="text-slate-300 font-semibold">Macro goals</span>
+        <button onclick="csvIO.exportGoals()" class="px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700">Export</button>
+        <button onclick="csvIO.importGoals()" class="px-3 py-1.5 bg-indigo-600 rounded-lg">Import</button>
+      
       </div>
       <p class="text-[10px] text-slate-500">Importing <strong>replaces</strong> all existing data for that section (you'll be asked to confirm). To add entries, export first, append rows to that file, then re-import. Blank or duplicate ids are renumbered automatically.</p>
     </div>
@@ -980,5 +989,6 @@ class="text-emerald-400 underline">Create Key in Google AI Studio</a>
 <script src="csv-io.js"></script>
 <script src="running.js"></script>
 <script src="timer.js"></script>
+<script src="progress.js"></script>
 </body>
 </html>

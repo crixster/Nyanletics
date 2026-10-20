@@ -404,11 +404,75 @@
     } catch (e) { console.warn('rehab zip import failed', e); toast('Rehab: could not read that zip file'); }
   }
 
+  // ---------- Progress (body weight / body fat / muscle mass) ----------
+  // The data lives inside progress.js, which exposes window.progressData { get, set }
+  // (same pattern as window.rehabData). Weights are always exported in kg.
+  const PROG_COLS = ['date', 'weight_kg', 'bodyfat_pct', 'muscle_kg'];
+
+  function exportProgress() {
+    if (!window.progressData) return toast('Progress module not ready');
+    const rows = window.progressData.get().sort((a, b) => (a.date < b.date ? -1 : 1))
+      .map(w => ({ date: w.date, weight_kg: w.kg, bodyfat_pct: w.bf, muscle_kg: w.mm }));
+    if (!rows.length) return toast('Progress: nothing to export yet');
+    download(`progress-${stamp()}.csv`, toCSV(PROG_COLS, rows, DATE_HINT));
+  }
+
+  function importProgress(text) {
+    if (!window.progressData) return toast('Progress module not ready');
+    const byDate = {};
+    let skipped = 0;
+    // blank -> null (not provided); out of range or not a number -> NaN (row skipped)
+    const val = (v, lo, hi) => {
+      if (v == null || String(v).trim() === '') return null;
+      const n = parseFloat(v);
+      return n >= lo && n <= hi ? n : NaN;
+    };
+    parseCSV(text).forEach(r => {
+      const date = normDate(r.date);
+      const kg = val(r.weight_kg, 20, 400), bf = val(r.bodyfat_pct, 2, 60), mm = val(r.muscle_kg, 10, 200);
+      if (!isDate(date) || [kg, bf, mm].some(Number.isNaN) || (kg == null && bf == null && mm == null)) { skipped++; return; }
+      const e = (byDate[date] = byDate[date] || { date });
+      if (kg != null) e.kg = kg;
+      if (bf != null) e.bf = bf;
+      if (mm != null) e.mm = mm;
+    });
+    const incoming = Object.values(byDate);
+    if (!incoming.length) return toast('Progress: no valid rows found — nothing changed');
+    if (!confirmReplace('progress entries', incoming.length)) return;
+    window.progressData.set(incoming);
+    toast(`Progress: replaced with ${incoming.length} entries` + (skipped ? `, ${skipped} skipped` : ''));
+  }
+
+
+    // ---------- Macro goals (daily targets) ----------
+  // Owned by macro-tracker.js (`goals` + localStorage 'apex_macro_goals').
+  // The Gemini API key is deliberately NOT exported, so a shared CSV can't leak it.
+  const GOAL_COLS = ['calories', 'protein_g', 'carbs_g', 'fat_g'];
+
+  function exportGoals() {
+    download(`macro-goals-${stamp()}.csv`, toCSV(GOAL_COLS, [{ calories: goals.cal, protein_g: goals.p, carbs_g: goals.c, fat_g: goals.f }]));
+  }
+
+  function importGoals(text) {
+    const r = parseCSV(text)[0];
+    const v = k => { const n = parseFloat(r && r[k]); return n > 0 && n <= 20000 ? Math.round(n) : NaN; };
+    const g = { cal: v('calories'), p: v('protein_g'), c: v('carbs_g'), f: v('fat_g') };
+    if (!r || Object.values(g).some(Number.isNaN)) return toast('Macro goals: need calories, protein_g, carbs_g and fat_g — nothing changed');
+    if (!confirm(`Replace your macro goals with ${g.cal} kcal / ${g.p}g protein / ${g.c}g carbs / ${g.f}g fat?`)) return;
+    goals = g;
+    localStorage.setItem('apex_macro_goals', JSON.stringify(goals));
+    if (typeof renderSettings === 'function') renderSettings();
+    if (typeof renderDay === 'function') renderDay();
+    toast('Macro goals restored');
+  }
+
   // ---------- public API used by the buttons in index.html ----------
   window.csvIO = {
-    exportLifting, exportFood, exportRehab,
+    exportLifting, exportFood, exportRehab, exportProgress, exportGoals,   // add exportGoals
     importLifting: () => pickFile(importLifting),
     importFood: () => pickFile(importFood),
+    importProgress: () => pickFile(importProgress),
+    importGoals: () => pickFile(importGoals),                               // add this line
     importRehab: () => pickAny('.csv,.zip,text/csv,application/zip', importRehabFile)
   };
   
