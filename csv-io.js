@@ -444,35 +444,54 @@
   }
 
 
-    // ---------- Macro goals (daily targets) ----------
-  // Owned by macro-tracker.js (`goals` + localStorage 'apex_macro_goals').
-  // The Gemini API key is deliberately NOT exported, so a shared CSV can't leak it.
-  const GOAL_COLS = ['calories', 'protein_g', 'carbs_g', 'fat_g'];
 
-  function exportGoals() {
-    download(`macro-goals-${stamp()}.csv`, toCSV(GOAL_COLS, [{ calories: goals.cal, protein_g: goals.p, carbs_g: goals.c, fat_g: goals.f }]));
+  // ---------- Macro favourites (saved foods) ----------
+  const FAV_COLS = ['id', 'name', 'cal', 'p', 'c', 'f', 'portion'];
+
+  function exportFavourites() {
+    if (!favourites.length) return toast('Favourites: nothing to export yet');
+    download(`macro-favourites-${stamp()}.csv`, toCSV(FAV_COLS, favourites));
   }
 
-  function importGoals(text) {
-    const r = parseCSV(text)[0];
-    const v = k => { const n = parseFloat(r && r[k]); return n > 0 && n <= 20000 ? Math.round(n) : NaN; };
-    const g = { cal: v('calories'), p: v('protein_g'), c: v('carbs_g'), f: v('fat_g') };
-    if (!r || Object.values(g).some(Number.isNaN)) return toast('Macro goals: need calories, protein_g, carbs_g and fat_g — nothing changed');
-    if (!confirm(`Replace your macro goals with ${g.cal} kcal / ${g.p}g protein / ${g.c}g carbs / ${g.f}g fat?`)) return;
-    goals = g;
-    localStorage.setItem('apex_macro_goals', JSON.stringify(goals));
-    if (typeof renderSettings === 'function') renderSettings();
+  function importFavourites(text) {
+    const incoming = [];
+    const seen = new Set();
+    const seenNames = new Set();
+    let skipped = 0, reassigned = 0;
+    const genId = () => Date.now() + Math.floor(Math.random() * 1e6);
+    parseCSV(text).forEach(r => {
+      const name = (r.name || '').trim();
+      const key = name.toLowerCase();
+      if (!name || seenNames.has(key)) { skipped++; return; }
+      seenNames.add(key);
+      const raw = String(r.id || '').trim();
+      let id = raw === '' ? genId() : idOf(raw);
+      if (seen.has(String(id))) {
+        do { id = genId(); } while (seen.has(String(id)));
+        reassigned++;
+      }
+      seen.add(String(id));
+      incoming.push({ id, name, cal: num(r.cal), p: num(r.p), c: num(r.c), f: num(r.f), portion: num(r.portion, 1) || 1 });
+    });
+    if (!incoming.length) return toast('Favourites: no valid rows found — nothing changed');
+    if (!confirmReplace('favourite foods', incoming.length)) return;
+    favourites = incoming;
+    if (typeof saveFavourites === 'function') saveFavourites();
+    else localStorage.setItem('apex_favourites', JSON.stringify(favourites));
+    if (typeof renderFavouritesList === 'function') renderFavouritesList();
     if (typeof renderDay === 'function') renderDay();
-    toast('Macro goals restored');
+    toast(`Favourites: replaced with ${incoming.length} entries`
+      + (reassigned ? `, ${reassigned} duplicate id(s) renumbered` : '')
+      + (skipped ? `, ${skipped} skipped` : ''));
   }
 
   // ---------- public API used by the buttons in index.html ----------
   window.csvIO = {
-    exportLifting, exportFood, exportRehab, exportProgress, exportGoals,   // add exportGoals
+   exportLifting, exportFood, exportRehab, exportProgress, exportFavourites,
     importLifting: () => pickFile(importLifting),
     importFood: () => pickFile(importFood),
     importProgress: () => pickFile(importProgress),
-    importGoals: () => pickFile(importGoals),                               // add this line
+    importFavourites: () => pickFile(importFavourites),                               // add this line
     importRehab: () => pickAny('.csv,.zip,text/csv,application/zip', importRehabFile)
   };
   

@@ -3,7 +3,8 @@
 // Adds its own nav button + #progressTab and wraps switchTab().
 // Reads: exercises[] (lifting-log.js), foodLogs + goals (macro-tracker.js).
 // Owns:  localStorage 'nyanletics_progress' =
-//        { weights:[{date,kg?,bf?,mm?}], unit, open:{section:bool} }
+//        { weights:[{date,kg?,bf?,mm?}], unit, open:{section:bool},
+//          show:{kg,bf,mm}, ctype:'line'|'bar'|'week' }
 // =====================================================================
 (function () {
   'use strict';
@@ -12,10 +13,11 @@
   const CARD = 'glass-card rounded-2xl p-4 shadow-xl';
   const INP = 'bg-slate-900/70 border border-slate-700 rounded-xl px-2.5 py-2 text-sm text-white min-w-0';
   const SUB = 'text-[10px] uppercase tracking-wider text-slate-400 font-bold';
-  let P = { weights: [], unit: 'kg', open: {} }, range = 90, off = 0, moff = 0, wm = 'kg', sel = '', q = '', shown = [], vmode = 'cycle', vsel = -1;
+  let P = { weights: [], unit: 'kg', open: {}, show: { kg: true, bf: true, mm: true }, ctype: 'line' }, range = 90, off = 0, moff = 0, sel = '', q = '', shown = [], vmode = 'cycle', vsel = -1;
   const TIPS = {};
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.weights)) P = Object.assign(P, s); } catch (e) {}
   P.open = P.open || {};
+  P.show = Object.assign({ kg: true, bf: true, mm: true }, P.show); P.ctype = ['line', 'bar', 'week'].includes(P.ctype) ? P.ctype : 'line';
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} };
 
   const $ = id => document.getElementById(id);
@@ -40,10 +42,16 @@
   const inWin = d => { const w = win(), t = tms(d); return t >= w[0] && t <= w[1]; };
   const winLabel = () => { const w = win(); return range ? (range === 1 ? fd(w[1]) : fd(w[0]) + ' – ' + fd(w[1])) : 'All time'; };
   const daily = () => range > 0 && range <= 28;
-  function keyOf(d) { if (daily()) return d; const t = new Date(tms(d)); t.setDate(t.getDate() - t.getDay()); return iso(t); }
+  function wkOf(d) { const t = new Date(tms(d)); t.setDate(t.getDate() - t.getDay()); return iso(t); } // Sunday that starts d's week
+  function keyOf(d) { return daily() ? d : wkOf(d); }
 
   // ---------- body composition ----------
-  const MET = { kg: ['Weight', v => disp(v), () => P.unit], bf: ['Body fat', v => v, () => '%'], mm: ['Muscle', v => disp(v), () => P.unit] };
+  // [label, to-display fn, unit fn, colour, axis side]
+  const MET = {
+    kg: ['Weight', v => disp(v), () => P.unit, '#818cf8', 'L'],
+    bf: ['Body fat', v => v, () => '%', '#fb923c', 'R'],
+    mm: ['Muscle', v => disp(v), () => P.unit, '#34d399', 'L']
+  };
   const sortedW = () => P.weights.slice().sort((a, b) => a.date < b.date ? -1 : 1);
   const wts = () => sortedW().filter(w => w.kg != null);
   function bwAt(date) { const w = wts(); if (!w.length) return null; let r = w[0].kg; w.forEach(x => { if (x.date <= date) r = x.kg; }); return r; }
@@ -114,6 +122,134 @@
     return `<div class="${CARD}"><button onclick="PG.tog('${id}')" class="w-full flex items-center justify-between text-left"><span class="text-sm font-bold text-white">${title} <span class="text-[11px] font-normal text-slate-400">${sub || ''}</span></span><span class="text-slate-400 text-xs">${o ? '▾' : '▸'}</span></button>${o ? `<div class="mt-3">${body()}</div>` : ''}</div>`;
   };
 
+  // Body-composition chart. Modes (P.ctype): 'line' = entries joined by a line, 'bar' = one bar group
+  // per entry, 'week' = average per calendar week. One colour per metric; mass axis left, % axis right.
+  const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const bodyUnit = k => k === 'bf' ? '%' : ' ' + P.unit;
+  function bodyChart() {
+    const ks = Object.keys(MET).filter(k => P.show[k]);
+    if (!ks.length) return none;
+    const mode = P.ctype, line = mode === 'line', hasMass = ks.some(k => k !== 'bf');
+    const side = k => (k === 'bf' && hasMass) ? 'R' : 'L';
+    const ents = sortedW().filter(w => inWin(w.date) && ks.some(k => w[k] != null));
+    if (!ents.length) return none;
+    const W = 320, H = 150, T = 8, B = 20, L = 34, R = ks.some(k => side(k) === 'R') ? 34 : 8;
+    const span = (k, v) => `<span style="color:${MET[k][3]}">${MET[k][0]} ${f1(v)}${bodyUnit(k)}</span>`;
+    const vals = { L: [], R: [] }, tips = [];
+    let series = [], groups = [], x0 = 0, x1 = 0;
+
+    if (line) {
+      series = ks.map(k => ({ k, s: side(k), pts: ents.filter(w => w[k] != null).map(w => ({ x: tms(w.date), y: MET[k][1](w[k]), d: w.date })) }));
+      series.forEach(s => s.pts.forEach(p => vals[s.s].push(p.y)));
+      const xs = series.flatMap(s => s.pts.map(p => p.x));
+      x0 = Math.min(...xs); x1 = Math.max(...xs); if (x1 === x0) x1 += DAY;
+    } else {
+      if (mode === 'bar') {
+        groups = ents.map(w => {
+          const v = {}; ks.forEach(k => { if (w[k] != null) v[k] = MET[k][1](w[k]); });
+          return { lab: fd(w.date), head: w.date, v };
+        });
+      } else {
+        const wk = {};
+        ents.forEach(w => {
+          const c = wkOf(w.date), o = (wk[c] = wk[c] || { days: new Set(), raw: {} });
+          o.days.add(w.date); ks.forEach(k => { if (w[k] != null) (o.raw[k] = o.raw[k] || []).push(w[k]); });
+        });
+        groups = Object.keys(wk).sort().map(c => {
+          const v = {}, n = wk[c].days.size;
+          ks.forEach(k => { if (wk[c].raw[k]) v[k] = MET[k][1](mean(wk[c].raw[k])); });
+          return { lab: fd(c), head: 'Week of ' + fd(c) + ' (' + (n === 1 ? '1 entry' : 'avg of ' + n) + ')', v };
+        });
+      }
+      groups.forEach(gr => ks.forEach(k => { if (gr.v[k] != null) vals[side(k)].push(gr.v[k]); }));
+    }
+
+    const sc = {};
+    ['L', 'R'].forEach(s => {
+      if (!vals[s].length) return;
+      let lo = line ? Math.min(...vals[s]) : 0, hi = Math.max(...vals[s]);
+      if (hi === lo) { lo -= 1; hi += 1; }
+      const pad = (hi - lo) * 0.12; hi += pad; if (line) lo = Math.max(0, lo - pad);
+      sc[s] = { lo, hi };
+    });
+    const Y = (s, v) => T + (1 - (v - sc[s].lo) / (sc[s].hi - sc[s].lo)) * (H - T - B);
+    const X = x => L + (x - x0) / (x1 - x0) * (W - L - R);
+    const axCol = s => { const m = ks.filter(k => side(k) === s); return m.length === 1 ? MET[m[0]][3] : '#94a3b8'; };
+    const axSuf = s => ks.filter(k => side(k) === s).every(k => k === 'bf') ? '%' : '';
+
+    let o = `<svg viewBox="0 0 ${W} ${H}" class="w-full select-none" onclick="PG.tap('w',event)">`;
+    for (let i = 0; i < 3; i++) {
+      const y = T + (1 - i / 2) * (H - T - B);
+      o += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#334155" stroke-width=".5"/>`;
+      ['L', 'R'].forEach(s => {
+        if (!sc[s]) return;
+        const v = sc[s].lo + (sc[s].hi - sc[s].lo) * i / 2;
+        o += `<text x="${s === 'L' ? L - 4 : W - R + 4}" y="${y + 3}" text-anchor="${s === 'L' ? 'end' : 'start'}" font-size="8" fill="${axCol(s)}">${Math.round(v * 10) / 10}${axSuf(s)}</text>`;
+      });
+    }
+
+    let first = '', last = '';
+    if (line) {
+      // The line joins the entry dots themselves (no averaging).
+      const byX = {};
+      series.forEach(s => {
+        if (s.pts.length > 1) o += `<polyline fill="none" stroke="${MET[s.k][3]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${s.pts.map(p => X(p.x).toFixed(1) + ',' + Y(s.s, p.y).toFixed(1)).join(' ')}"/>`;
+      });
+      series.forEach(s => s.pts.forEach(p => {
+        o += `<circle cx="${X(p.x).toFixed(1)}" cy="${Y(s.s, p.y).toFixed(1)}" r="2.8" fill="${MET[s.k][3]}"/>`;
+        (byX[p.x] = byX[p.x] || { x: p.x, d: p.d, t: [] }).t.push(span(s.k, p.y));
+      }));
+      Object.values(byX).forEach(e => tips.push({ px: X(e.x) / W, h: 1, l: e.d + ': ' + e.t.join(' · ') }));
+      first = fd(x0); last = fd(x1);
+    } else {
+      // One group per entry (bar) or per week (week); every group has one slot per visible metric.
+      const n = groups.length, cw = (W - L - R) / n, gw = Math.min(cw * 0.8, ks.length * 26), bw = gw / ks.length;
+      groups.forEach((gr, i) => {
+        const txt = [];
+        ks.forEach((k, j) => {
+          if (gr.v[k] == null) return;
+          const y = Y(side(k), gr.v[k]);
+          o += `<rect x="${(L + (i + 0.5) * cw - gw / 2 + j * bw).toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(1, bw - 0.6).toFixed(1)}" height="${(H - B - y).toFixed(1)}" rx="1.5" fill="${MET[k][3]}"/>`;
+          txt.push(span(k, gr.v[k]));
+        });
+        tips.push({ px: (L + (i + 0.5) * cw) / W, h: 1, l: gr.head + ': ' + txt.join(' · ') });
+        if (n <= 8) o += `<text x="${(L + (i + 0.5) * cw).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="8" fill="#94a3b8">${gr.lab}</text>`;
+      });
+      if (n > 8) { first = groups[0].lab; last = groups[n - 1].lab; }
+    }
+    if (first) o += `<text x="${L}" y="${H - 5}" font-size="8" fill="#94a3b8">${first}</text><text x="${W - R}" y="${H - 5}" text-anchor="end" font-size="8" fill="#94a3b8">${last}</text>`;
+    TIPS.w = tips;
+    return o + '</svg>';
+  }
+
+  // Readouts above the chart: 7-day average (line / bar modes) or latest vs previous week (weekly mode).
+  function bodyStats() {
+    const ks = Object.keys(MET).filter(k => P.show[k]);
+    if (!ks.length) return '';
+    const W = sortedW(), wk = P.ctype === 'week';
+    const end = iso(new Date(range ? win()[1] : todayMs()));
+    const avgIn = (k, a, b) => { const v = W.filter(w => w[k] != null && w.date >= a && w.date <= b).map(w => w[k]); return v.length ? mean(v) : null; };
+    const pair = k => {
+      if (!wk) return [avgIn(k, addD(end, -6), end), avgIn(k, addD(end, -13), addD(end, -7))];
+      const m = {};
+      W.forEach(w => { if (w[k] != null && inWin(w.date)) (m[wkOf(w.date)] = m[wkOf(w.date)] || []).push(w[k]); });
+      const ws = Object.keys(m).sort(), at = i => ws.length > i ? mean(m[ws[ws.length - 1 - i]]) : null;
+      return [at(0), at(1)];
+    };
+    const chip = k => {
+      const c = MET[k][3], p = pair(k), a = p[0], b = p[1], u = bodyUnit(k);
+      const val = a == null ? '--' : f1(MET[k][1](a)) + `<span class="text-[10px] font-semibold text-slate-400">${u}</span>`;
+      let sub = a == null ? 'no entries' : b == null ? 'nothing to compare' : '';
+      if (a != null && b != null) {
+        const d = MET[k][1](a) - MET[k][1](b);
+        sub = (Math.abs(d) < 0.05 ? '– no change' : (d > 0 ? '▲ ' : '▼ ') + f1(Math.abs(d)) + u) + (wk ? ' vs prev week' : ' vs prev 7d');
+      }
+      return `<div class="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-center" style="background:${c}1a;border:1px solid ${c}55"><div class="text-[9px] font-bold uppercase tracking-wider" style="color:${c}">${MET[k][0]}</div><div class="text-sm font-extrabold text-white">${val}</div><div class="text-[10px] text-slate-400">${sub}</div></div>`;
+    };
+    const head = wk ? 'Weekly average · latest vs previous week' : `7-day average · ${fd(addD(end, -6))} – ${fd(end)}`;
+    return `<div class="${SUB} mb-1">${head}</div><div class="flex gap-1.5 mb-3">${ks.map(chip).join('')}</div>`;
+  }
+
   // ---------- sections ----------
   function summary() {
     const w = wts(), last = w[w.length - 1];
@@ -131,16 +267,22 @@
   }
 
   function bodyBody() {
-    const m = MET[wm], all = sortedW().filter(w => w[wm] != null), ma = movAvg(all, wm), u = m[2]();
-    const lab = (w, v, x) => `${w.date}: ${f1(m[1](v))} ${u}${x || ''}`;
-    const raw = all.filter(w => inWin(w.date)).map(w => ({ x: tms(w.date), y: m[1](w[wm]), l: lab(w, w[wm]) }));
-    const avg = ma.filter(w => inWin(w.date)).map(w => ({ x: tms(w.date), y: m[1](w.v), l: lab(w, w.v, ' (7-day avg)') }));
-    const recent = sortedW().slice(-5).reverse().map(w => `<div class="flex items-center justify-between text-xs text-slate-300 py-1 border-b border-slate-700/40 last:border-0"><span>${w.date}</span><span class="font-semibold">${[w.kg != null ? f1(disp(w.kg)) + P.unit : '', w.bf != null ? w.bf + '%' : '', w.mm != null ? f1(disp(w.mm)) + P.unit + ' muscle' : ''].filter(Boolean).join(' · ')}</span><button onclick="PG.delW('${w.date}')" class="text-slate-500 hover:text-rose-400 px-2" aria-label="Delete">✕</button></div>`).join('');
-    return `<div class="flex gap-1 mb-3">${Object.keys(MET).map(k => `<button onclick="PG.metric('${k}')" class="flex-1 text-[11px] font-bold py-1.5 rounded-lg ${k === wm ? 'bg-indigo-600 text-white' : 'bg-slate-900/70 text-slate-300'}">${MET[k][0]}</button>`).join('')}</div>
+    const ks = Object.keys(MET), on = ks.filter(k => P.show[k]), dual = on.includes('bf') && on.length > 1;
+    const toggles = ks.map(k => {
+      const c = MET[k][3], a = P.show[k];
+      return `<button onclick="PG.metric('${k}')" class="flex-1 text-[11px] font-bold py-1.5 rounded-lg border ${a ? 'text-white' : 'bg-slate-900/70 text-slate-500 border-transparent'}" style="${a ? `background:${c}33;border-color:${c}` : ''}"><span style="color:${c}">●</span> ${MET[k][0]}</button>`;
+    }).join('');
+    const pill = (t, tx) => `<button onclick="PG.chartType('${t}')" class="text-[11px] font-bold px-3 py-1 rounded-md ${P.ctype === t ? 'bg-indigo-600 text-white' : 'text-slate-300'}">${tx}</button>`;
+    const hint = { line: 'dots = entries', bar: 'one bar per entry', week: 'avg per calendar week' }[P.ctype];
+    const recent = sortedW().slice(-5).reverse().map(w => {
+      const part = (k, fn) => w[k] != null ? `<span style="color:${MET[k][3]}">${fn(w[k])}</span>` : '';
+      return `<div class="flex items-center justify-between text-xs text-slate-300 py-1 border-b border-slate-700/40 last:border-0"><span>${w.date}</span><span class="font-semibold">${[part('kg', v => f1(disp(v)) + P.unit), part('bf', v => v + '%'), part('mm', v => f1(disp(v)) + P.unit + ' muscle')].filter(Boolean).join(' · ')}</span><button onclick="PG.delW('${w.date}')" class="text-slate-500 hover:text-rose-400 px-2" aria-label="Delete">✕</button></div>`;
+    }).join('');
+    return `<div class="flex gap-1 mb-3">${toggles}</div>
       <div class="grid grid-cols-3 gap-2 mb-2"><input id="pgW" type="number" step="0.1" inputmode="decimal" placeholder="Weight (${P.unit})" class="${INP}"><input id="pgB" type="number" step="0.1" inputmode="decimal" placeholder="Body fat %" class="${INP}"><input id="pgM" type="number" step="0.1" inputmode="decimal" placeholder="Muscle (${P.unit})" class="${INP}"></div>
-      <div class="flex gap-2 mb-3"><input id="pgD" type="date" value="${iso(new Date())}" class="${INP} flex-1 !text-xs"><button onclick="PG.addW()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl px-5">Save entry</button></div>
-      <div class="text-[10px] text-slate-400 text-right mb-1"><span style="color:#818cf8">━</span> 7-day avg &nbsp;<span>●</span> entries</div>
-      ${chart('w', [{ pts: raw, c: '#94a3b8', dots: true, w: 0 }, { pts: avg, c: '#818cf8', w: 2.4 }])}${cap('w')}
+      <div class="flex gap-2 mb-3"><input id="pgD" type="date" value="${iso(new Date())}" max="${iso(new Date())}" class="${INP} flex-1 !text-xs"><button onclick="PG.addW()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl px-5">Save entry</button></div>
+      <div class="flex items-center justify-between gap-2 mb-2"><div class="flex gap-0.5 bg-slate-900/70 p-0.5 rounded-lg">${pill('line', 'Line')}${pill('bar', 'Bar')}${pill('week', 'Weekly avg')}</div><div class="text-[10px] text-slate-400 text-right">${hint}${dual ? '<br>left ' + P.unit + ' · right %' : ''}</div></div>
+      ${bodyStats()}${bodyChart()}${cap('w')}
       ${recent ? `<div class="mt-2">${recent}</div>` : ''}`;
   }
 
@@ -285,13 +427,19 @@
     mon(d) { moff = Math.min(0, moff + d); render(); },
     unit() { P.unit = P.unit === 'kg' ? 'lb' : 'kg'; save(); render(); },
     tog(id) { P.open[id] = P.open[id] === false; save(); render(); },
-    metric(k) { wm = k; render(); },
+    metric(k) {
+      const on = Object.keys(MET).filter(x => P.show[x]);
+      if (P.show[k] && on.length === 1) { toast('Keep at least one metric visible'); return; }
+      P.show[k] = !P.show[k]; save(); render();
+    },
+    chartType(t) { P.ctype = ['line', 'bar', 'week'].includes(t) ? t : 'line'; save(); render(); },
     search(v) { q = v; render(); },
     setLift(i) { if (shown[i]) sel = shown[i].name.toLowerCase(); render(); },
     addW() {
       // 0 or blank = "not measured". Each field is range-checked in the unit currently shown.
       const num = id => { const v = parseFloat($(id) && $(id).value); return isNaN(v) || v <= 0 ? null : v; };
       const k = P.unit === 'lb' ? 1 / LB : 1, d = ($('pgD') && $('pgD').value) || iso(new Date());
+      if (d > iso(new Date())) { toast('Date can’t be in the future'); return; }
       const raw = { kg: num('pgW'), bf: num('pgB'), mm: num('pgM') }, out = {};
       const fields = [['kg', 'Weight', 20, 400, true], ['bf', 'Body fat', 2, 60, false], ['mm', 'Muscle mass', 10, 200, true]];
       for (const [f, name, lo, hi, mass] of fields) {
@@ -315,7 +463,7 @@
       const r = e.currentTarget.getBoundingClientRect(), f = (e.clientX - r.left) / r.width; let b = null;
       (TIPS[id] || []).forEach(p => { if (!b || Math.abs(p.px - f) < Math.abs(b.px - f)) b = p; });
       if (id === 'v' && b) { vsel = b.i; render(); return; }
-      const c = $('cap-' + id); if (b && c) c.textContent = b.l;
+      const c = $('cap-' + id); if (b && c) { if (b.h) c.innerHTML = b.l; else c.textContent = b.l; }
     },
     day(k) {
       const n = EX().filter(e => e.date === k), f = (FL()[k] || []).length, c = $('cap-c');
