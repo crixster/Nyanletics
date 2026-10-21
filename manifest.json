@@ -1,10 +1,10 @@
 {
-  "id": "/index.html",
+  "id": "/nyanletics/",
   "name": "Nyanletics Hybrid Training",
   "short_name": "Nyanletics",
   "description": "Smart barbell loading calculator, workout log, macro tracker & rehab recovery",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/nyanletics/index.html",
+  "scope": "/nyanletics/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
