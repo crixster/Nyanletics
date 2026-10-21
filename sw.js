@@ -9,7 +9,7 @@
 // background update, and network-first for everything else (e.g. the Gemini API calls),
 // falling back to cache only if a previously-cached copy exists.
 
-const CACHE_NAME = 'nyanletics-cache-v10';
+const CACHE_NAME = 'nyanletics-cache-v11';
 
 // Keep this list to same-origin files that always exist for the app to boot.
 const APP_SHELL = [
