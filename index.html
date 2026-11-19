@@ -309,7 +309,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
+          <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 items-end">
             <div class="col-span-1">
               <label class="text-xs text-slate-400 font-medium block mb-1">Weight</label>
               <input type="number" id="exerciseWeight" placeholder="0" step="0.5" 
@@ -352,6 +352,12 @@
                 class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-2.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
             </div>
           </div>
+
+          <div>
+  <label class="text-xs text-slate-400 font-medium block mb-1">Date</label>
+  <input type="date" id="exerciseDate" 
+    class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-2.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+</div>
 
           <button onclick="addExercise()" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-semibold py-2.5 rounded-lg text-sm shadow-md transition-all">
             Save Set Record
@@ -833,7 +839,10 @@ class="text-emerald-400 underline">Create Key in Google AI Studio</a>
         </div>
         <input type="text" id="editTempo" placeholder="2010 or 2-0-1-0" onblur="this.value = formatTempo(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
       </div>
-
+<div>
+  <label class="text-xs text-slate-400 font-medium block mb-1">Date</label>
+  <input type="date" id="editDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+</div>
       <div class="flex gap-2 pt-2">
         <button onclick="closeEditModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs transition">
           Cancel
