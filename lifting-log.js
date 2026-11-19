@@ -6,9 +6,8 @@
 // (loadSuggestedWeightToPlateCalculator) — that's the app's only
 // intentional Lifting Log -> Plate Loader coupling; keep it that way
 // rather than adding new cross-calls.
-// NOTE: this state is NOT currently persisted to localStorage — it
-// resets to the seed data below on every page reload. Worth fixing
-// alongside the split (see chat).
+// Persisted to localStorage via saveLifting() (called after every add/
+// edit/delete/rename) under LIFT_KEY / ORM_KEY, and reloaded on startup.
 // =====================================================================
 
 let collapsedGroupsMap = {};
@@ -464,6 +463,7 @@ function saveLifting() {
 
         collapsedGroupsMap[name.toLowerCase()] = false;
 
+        saveLifting();
         renderExercises();
         render1RMCard();
         updateSuggestionsSelect();
@@ -473,6 +473,7 @@ function saveLifting() {
 
     function deleteExercise(id) {
       exercises = exercises.filter(e => e.id !== id);
+      saveLifting();
       renderExercises();
       render1RMCard();
       updateSuggestionsSelect();
@@ -480,6 +481,7 @@ function saveLifting() {
 
     function deleteGroup(exerciseName) {
       exercises = exercises.filter(e => e.name.toLowerCase() !== exerciseName.toLowerCase());
+      saveLifting();
       renderExercises();
       render1RMCard();
       updateSuggestionsSelect();
@@ -508,6 +510,7 @@ function saveLifting() {
           }
           return ex;
         });
+        saveLifting();
         closeRenameGroupModal();
         renderExercises();
         render1RMCard();
@@ -552,6 +555,7 @@ function saveLifting() {
           }
           return ex;
         });
+        saveLifting();
         closeEditModal();
         renderExercises();
         render1RMCard();
