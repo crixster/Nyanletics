@@ -428,6 +428,7 @@ function saveLifting() {
       const setsInput = document.getElementById('exerciseSets');
       const repsInput = document.getElementById('exerciseReps');
       const tempoInput = document.getElementById('exerciseTempo');
+      const dateInput = document.getElementById('exerciseDate');
       const bwInput = document.getElementById('exerciseBW');
 
       const name = nameInput?.value.trim();
@@ -441,6 +442,7 @@ function saveLifting() {
 
       if (name && !isNaN(reps)) {
         const today = new Date().toISOString().split('T')[0];
+        const date = dateInput?.value || today;
         exercises.unshift({ 
           id: Date.now(), 
           name, 
@@ -450,7 +452,7 @@ function saveLifting() {
           reps, 
           tempo, 
           isBW,
-          date: today 
+          date 
         });
 
         if (nameInput) nameInput.value = '';
@@ -458,6 +460,7 @@ function saveLifting() {
         if (setsInput) setsInput.value = '3';
         if (repsInput) repsInput.value = '';
         if (tempoInput) tempoInput.value = '2-0-1-0';
+        if (dateInput) dateInput.value = '';
         if (bwInput) bwInput.checked = false;
         document.getElementById('exerciseSuggestions')?.classList.add('hidden');
 
@@ -530,6 +533,7 @@ function saveLifting() {
       document.getElementById('editReps').value = record.reps;
       document.getElementById('editTempo').value = formatTempo(record.tempo || '2-0-1-0');
       document.getElementById('editBW').checked = !!record.isBW;
+      document.getElementById('editDate').value = record.date || '';
       document.getElementById('editModal')?.classList.remove('hidden');
     }
 
@@ -547,11 +551,12 @@ function saveLifting() {
       const sets = parseInt(document.getElementById('editSets')?.value) || 3;
       const reps = parseInt(document.getElementById('editReps')?.value);
       const tempo = formatTempo(document.getElementById('editTempo')?.value || '2-0-1-0');
+      const date = document.getElementById('editDate')?.value;
 
       if (id && name && !isNaN(reps)) {
         exercises = exercises.map(ex => {
           if (ex.id === id) {
-            return { ...ex, name, weight, unit, sets, reps, tempo, isBW };
+            return { ...ex, name, weight, unit, sets, reps, tempo, isBW, date: date || ex.date };
           }
           return ex;
         });
@@ -583,7 +588,10 @@ function saveLifting() {
     function renderExercises() {
       const list = document.getElementById('exercisesList');
       if (!list) return;
-
+const dateInput = document.getElementById('exerciseDate');
+if (dateInput && !dateInput.value) {
+  dateInput.value = new Date().toISOString().split('T')[0];
+}
       const searchQuery = (document.getElementById('searchLog')?.value || '').toLowerCase().trim();
       const filtered = exercises.filter(ex => ex.name.toLowerCase().includes(searchQuery));
 
