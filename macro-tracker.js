@@ -18,18 +18,39 @@ let geminiApiKey = '';
 
   let GEMINI_PREFERRED_MODEL = [
   'gemini-3.8-flash',
-  'gemini-3.7-flash',
-  'gemini-3.5-flash',
-  'gemini-3.1-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
   'gemini-flash-latest'
 ];
   let GEMINI_FALLBACK_MODELS = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
     'gemini-flash-lite-latest'
   ];
   let cachedWorkingGeminiModel = null;
-
+  // Downscale + JPEG-compress before sending to Gemini: a phone camera photo
+  // can be 8-15MB at full resolution, which slows down both the upload and
+  // Gemini's own processing with no benefit to a food-ID / label-reading task.
+  function resizeImageForScan(file) {
+    const MAX_EDGE = 1024;
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Could not read the selected image file'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Could not decode the selected image file'));
+        img.onload = () => {
+          const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve({ base64Data: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
 
     function loadSettings() {
@@ -719,69 +740,49 @@ let geminiApiKey = '';
       // previous attempt.
       setScanStatus(`Connecting to Gemini (${cachedWorkingGeminiModel || GEMINI_PREFERRED_MODEL[0]})...`, false);
 
-      try {
-        const reader = new FileReader();
-        reader.onload = async function(e) {
           try {
-            const base64Data = e.target.result.split(',')[1];
-            const mimeType = file.type || 'image/jpeg';
+        const { base64Data, mimeType } = await resizeImageForScan(file);
 
-            const promptText = "Analyze this food image or nutritional label. Identify the food item and estimate/extract the nutrition facts per serving: food name, calories (kcal), protein (g), carbs (g), fat (g). Return ONLY a JSON object with keys: name (string), cal (number), p (number), c (number), f (number). Do not include markdown code block formatting.";
+        const promptText = "Analyze this food image or nutritional label. Identify the food item and estimate/extract the nutrition facts per serving: food name, calories (kcal), protein (g), carbs (g), fat (g). Return ONLY a JSON object with keys: name (string), cal (number), p (number), c (number), f (number). Do not include markdown code block formatting.";
 
-            const payload = {
-              contents: [{
-                parts: [
-                  { text: promptText },
-                  {
-                    inline_data: {
-                      mime_type: mimeType,
-                      data: base64Data
-                    }
-                  }
-                ]
-              }]
-            };
-
-            setScanStatus(`Analyzing image with ${cachedWorkingGeminiModel || GEMINI_PREFERRED_MODEL[0]}...`, false);
-
-            const { modelId, data } = await callGeminiVision(geminiApiKey, payload);
-            setScanStatus(`Analyzing image with ${modelId}...`, false);
-
-            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-
-            let parsed = {};
-            try {
-              parsed = JSON.parse(cleanText);
-            } catch (err) {
-              throw new Error(`${modelId} returned a response that could not be parsed as JSON`);
-            }
-
-            document.getElementById('scan-status')?.classList.add('hidden');
-
-            openFormModal();
-            document.getElementById('food-name-input').value = parsed.name || 'Scanned Food Item';
-            document.getElementById('food-cal-input').value = parsed.cal || 0;
-            document.getElementById('food-p-input').value = parsed.p || 0;
-            document.getElementById('food-c-input').value = parsed.c || 0;
-            document.getElementById('food-f-input').value = parsed.f || 0;
-
-            showToast(`Image analyzed with ${modelId}! Verify values and save.`);
-          } catch (err) {
-            // Leave the error message visible in the scan status card
-            // (rather than hiding it) until the next scan is started.
-            setScanStatus(`AI Scan failed: ${err.message || 'Unknown error'}`, true);
-          }
+        const payload = {
+          contents: [{
+            parts: [
+              { text: promptText },
+              { inline_data: { mime_type: mimeType, data: base64Data } }
+            ]
+          }]
         };
-        reader.onerror = function() {
-          setScanStatus('AI Scan failed: could not read the selected image file', true);
-        };
-        reader.readAsDataURL(file);
+
+        setScanStatus(`Analyzing image with ${cachedWorkingGeminiModel || GEMINI_PREFERRED_MODEL[0]}...`, false);
+
+        const { modelId, data } = await callGeminiVision(geminiApiKey, payload);
+        setScanStatus(`Analyzing image with ${modelId}...`, false);
+
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        let parsed = {};
+        try {
+          parsed = JSON.parse(cleanText);
+        } catch (err) {
+          throw new Error(`${modelId} returned a response that could not be parsed as JSON`);
+        }
+
+        document.getElementById('scan-status')?.classList.add('hidden');
+
+        openFormModal();
+        document.getElementById('food-name-input').value = parsed.name || 'Scanned Food Item';
+        document.getElementById('food-cal-input').value = parsed.cal || 0;
+        document.getElementById('food-p-input').value = parsed.p || 0;
+        document.getElementById('food-c-input').value = parsed.c || 0;
+        document.getElementById('food-f-input').value = parsed.f || 0;
+
+        showToast(`Image analyzed with ${modelId}! Verify values and save.`);
       } catch (err) {
         setScanStatus(`AI Scan failed: ${err.message || 'Unknown error'}`, true);
       }
     }
-
 
     // Text-based macro lookup: user types a food description and Gemini
     // returns estimated macros, which pre-fill the Add Food modal.
